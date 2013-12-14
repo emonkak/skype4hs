@@ -9,24 +9,23 @@ module Web.Skype.API.X11 (
   runSkype,
   runEventLoop,
   withSkype
-)
-where
+) where
 
 #include <X11/Xlib.h>
 
 import Control.Applicative (Applicative)
 import Control.Exception (IOException)
 import Control.Exception.Lifted (catch)
-import Control.Monad (mplus, when)
-import Control.Monad.Error (Error(..))
-import Control.Monad.Error.Class (MonadError(..))
-import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Control.Monad.Trans (MonadIO(..))
+import Control.Monad (mplus)
+import Control.Monad.Error (Error, strMsg)
+import Control.Monad.Error.Class (MonadError, catchError, throwError)
+import Control.Monad.Reader (ReaderT, ask, runReaderT)
+import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bits ((.&.))
-import Data.List (elemIndex, unfoldr)
+import Data.List (unfoldr)
 import Data.Maybe (listToMaybe)
-import Data.Monoid (Monoid(..))
+import Data.Monoid (mappend, mempty)
 import Data.Typeable (Typeable)
 import Foreign
 import Foreign.C.String
@@ -89,12 +88,12 @@ createWindow display root = do
 
 -- | createAtom
 createAtom :: (Error e, MonadIO m, MonadError e m)
-        => X.Display -> String -> m X.Atom
-createAtom display atomName = do
-  atom <- liftIO $ X.internAtom display atomName True
+           => X.Display -> String -> m X.Atom
+createAtom display name = do
+  atom <- liftIO $ X.internAtom display name True
 
   if atom == X.none
-    then throwError $ strMsg $ "Can't create the atom: " ++ atomName
+    then throwError $ strMsg $ "Can't create the atom: " ++ name
     else return atom
 
 -- | getSkypeInstance
@@ -106,7 +105,7 @@ getSkypeInstanceWindow display root = do
   status <- liftIO $ X.getWindowProperty32 display instanceAtom root
 
   case status >>= listToMaybe of
-    Nothing       -> throwError $ strMsg "Skype instance is not found"
+    Nothing       -> throwError $ strMsg "Skype instance window is not found"
     Just property -> return $ fromIntegral property .&. 0xffffffff
 
 -- | connect
@@ -128,7 +127,6 @@ connectTo address = do
 
   messageBeginAtom <- createAtom display "SKYPECONTROLAPI_MESSAGE_BEGIN" `catchError`
                       closeDisplayAndWindow display window
-
   messageContinueAtom <- createAtom display "SKYPECONTROLAPI_MESSAGE" `catchError`
                          closeDisplayAndWindow display window
 
@@ -160,18 +158,20 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
   #{poke XClientMessageEvent, message_type} p_event $ skypeMessageBeginAtom api
   #{poke XClientMessageEvent, format}       p_event (8 :: CInt)  -- 8 bit values
 
-  sendChunks 0 p_event $ unfoldr splitPerChunk message
+  case unfoldr splitPerChunk message of
+    []       -> return ()
+    (bs:[])  -> send p_event $ bs `BS.snoc` 0  -- append NUL
+    (bs:bss) -> do
+      send p_event bs
+
+      #{poke XClientMessageEvent, message_type} p_event $ skypeMessageContinueAtom api
+
+      sendChunks p_event bss
 
   where
-    sendChunks n p_event []       = return ()
-    sendChunks n p_event (bs:[])  = send p_event $ bs `BS.snoc` 0
-    sendChunks 0 p_event (bs:bss) = do
-      send p_event bs
-      #{poke XClientMessageEvent, message_type} p_event $ skypeMessageContinueAtom api
-      sendChunks 1 p_event bss
-    sendChunks n p_event (bs:bss) = do
-      send p_event bs
-      sendChunks (n + 1) p_event bss
+    sendChunks p_event []       = return ()
+    sendChunks p_event (bs:[])  = send p_event $ bs `BS.snoc` 0  -- append NUL
+    sendChunks p_event (bs:bss) = send p_event bs >> sendChunks p_event bss
 
     send p_event chunk = do
       let p_data = #{ptr XClientMessageEvent, data} p_event
@@ -204,11 +204,11 @@ messageChunkSize = #{const sizeof(((XClientMessageEvent *) 0)->data.b) / sizeof(
 
 -- | runEventLoop
 runEventLoop :: SkypeAPI -> (BL.ByteString -> IO ()) -> IO ()
-runEventLoop api f = X.allocaXEvent $ loop mempty
+runEventLoop api action = X.allocaXEvent $ loop mempty
   where
     loop :: BS.Builder -> X.XEventPtr -> IO ()
     loop builder p_event = do
-      X.nextEvent (skypeDisplay api) p_event
+      X.nextEvent (skypeDisplay api) p_event  -- will blocking
 
       eventType <- #{peek XClientMessageEvent, type} p_event
 
@@ -216,8 +216,8 @@ runEventLoop api f = X.allocaXEvent $ loop mempty
       then do
         messageType <- #{peek XClientMessageEvent, message_type} p_event
 
-        if messageType == (skypeMessageBeginAtom api) ||
-           messageType == (skypeMessageContinueAtom api)
+        if messageType == skypeMessageBeginAtom api ||
+           messageType == skypeMessageContinueAtom api
         then do
           let p_data = #{ptr XClientMessageEvent, data} p_event
 
@@ -226,7 +226,7 @@ runEventLoop api f = X.allocaXEvent $ loop mempty
           case maybeIndex of
             Just i -> do
               bs <- BS.packCStringLen (p_data, i)
-              f $ BS.toLazyByteString $ builder `mappend` BS.byteString bs
+              action $ BS.toLazyByteString $ builder `mappend` BS.byteString bs
               loop mempty p_event
 
             Nothing -> do
