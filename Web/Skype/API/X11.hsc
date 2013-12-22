@@ -3,23 +3,25 @@
 
 module Web.Skype.API.X11 (
   Skype,
-  SkypeAPI,
+  SkypeConnection,
   connect,
   connectTo,
+  disconnect,
   runSkype,
-  runEventLoop,
   withSkype
 ) where
 
 #include <X11/Xlib.h>
 
 import Control.Applicative (Applicative)
+import Control.Concurrent (ThreadId, forkIO, killThread)
+import Control.Concurrent.Chan (Chan, dupChan, newChan, writeChan)
 import Control.Exception (IOException)
 import Control.Exception.Lifted (catch)
 import Control.Monad (mplus)
 import Control.Monad.Error (Error, strMsg)
 import Control.Monad.Error.Class (MonadError, catchError, throwError)
-import Control.Monad.Reader (ReaderT, ask, runReaderT)
+import Control.Monad.Reader (ReaderT, asks, runReaderT)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bits ((.&.))
@@ -39,8 +41,14 @@ import qualified Data.ByteString.Builder as BS
 import qualified Graphics.X11.Xlib as X
 import qualified Graphics.X11.Xlib.Extras as X
 
-newtype Skype m a = Skype (ReaderT SkypeAPI m a)
+newtype Skype m a = Skype (ReaderT SkypeConnection m a)
    deriving (Applicative, Functor, Monad, MonadIO)
+
+data SkypeConnection = SkypeConnection
+  { skypeApi :: SkypeAPI
+  , skypeChannel :: SkypeChannel
+  , skypeThread :: ThreadId
+  }
 
 data SkypeAPI = SkypeAPI
   { skypeDisplay :: X.Display
@@ -52,14 +60,16 @@ data SkypeAPI = SkypeAPI
   deriving (Show, Eq)
 
 instance MonadIO m => MonadSkype (Skype m) where
-  send message = Skype $ ask >>= liftIO . flip sendTo message
+  sendMessage message = Skype $ asks skypeApi >>= liftIO . flip sendTo message
+
+  getChannel = Skype $ asks skypeChannel
 
 -- | runSkype
-runSkype :: Skype m a -> SkypeAPI -> m a
+runSkype :: Skype m a -> SkypeConnection -> m a
 runSkype (Skype skype) = runReaderT skype
 
 -- | withSkype
-withSkype :: SkypeAPI -> Skype m a -> m a
+withSkype :: SkypeConnection -> Skype m a -> m a
 withSkype = flip runSkype
 
 -- | getDisplayAddress
@@ -109,13 +119,40 @@ getSkypeInstanceWindow display root = do
     Just property -> return $ fromIntegral property .&. 0xffffffff
 
 -- | connect
-connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m) => m SkypeAPI
-connect = getDisplayAddress >>= connectTo
+connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
+        => m SkypeConnection
+connect = connectTo =<< getDisplayAddress
 
 -- | connectTo
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-          => String -> m SkypeAPI
+          => String
+          -> m SkypeConnection
 connectTo address = do
+  api <- createApi address
+  chan <- liftIO newChan
+  thread <- liftIO $ forkIO $ runEventLoop api $ writeChan chan
+
+  return SkypeConnection
+    { skypeApi = api
+    , skypeChannel = chan
+    , skypeThread = thread
+    }
+
+-- | disconnect
+disconnect :: SkypeConnection -> IO ()
+disconnect connection = do
+  killThread $ skypeThread connection
+
+  let api = skypeApi connection
+  let display = skypeDisplay api
+  let window = skypeWindow api
+
+  X.destroyWindow display window
+  X.closeDisplay display
+
+-- | createApi
+createApi :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m) => String -> m SkypeAPI
+createApi address = do
   display <- openDisplay address
 
   let root = X.defaultRootWindow display
