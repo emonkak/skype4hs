@@ -19,7 +19,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Web.Skype.API.X11,
                        Web.Skype.Command,
-                       Web.Skype.Monad
+                       Web.Skype.Core
 
   -- other-modules:
   -- other-extensions:

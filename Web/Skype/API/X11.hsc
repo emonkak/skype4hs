@@ -1,19 +1,14 @@
-{-# LANGUAGE FlexibleContexts,
-             GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
 
 module Web.Skype.API.X11 (
-  Skype,
   SkypeConnection,
   connect,
   connectTo,
-  disconnect,
-  runSkype,
-  withSkype
+  disconnect
 ) where
 
 #include <X11/Xlib.h>
 
-import Control.Applicative (Applicative)
 import Control.Concurrent (ThreadId, forkIO, killThread)
 import Control.Concurrent.Chan (Chan, dupChan, newChan, writeChan)
 import Control.Exception (IOException)
@@ -21,7 +16,7 @@ import Control.Exception.Lifted (catch)
 import Control.Monad (mplus)
 import Control.Monad.Error (Error, strMsg)
 import Control.Monad.Error.Class (MonadError, catchError, throwError)
-import Control.Monad.Reader (ReaderT, asks, runReaderT)
+import Control.Monad.Reader (asks)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bits ((.&.))
@@ -32,17 +27,16 @@ import Data.Typeable (Typeable)
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
-import System.Environment (getEnv)
-import Web.Skype.Monad
+import System.Environment (getEnv, getProgName)
+import Web.Skype.Core
+import Web.Skype.Command (attachX11)
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Builder as BS
+import qualified Data.ByteString.Char8 as BC
+import qualified Data.ByteString.Lazy as BL
 import qualified Graphics.X11.Xlib as X
 import qualified Graphics.X11.Xlib.Extras as X
-
-newtype Skype m a = Skype (ReaderT SkypeConnection m a)
-   deriving (Applicative, Functor, Monad, MonadIO)
 
 data SkypeConnection = SkypeConnection
   { skypeApi :: SkypeAPI
@@ -59,18 +53,13 @@ data SkypeAPI = SkypeAPI
   }
   deriving (Show, Eq)
 
-instance MonadIO m => MonadSkype (Skype m) where
-  sendMessage message = Skype $ asks skypeApi >>= liftIO . flip sendTo message
+instance MonadIO m => MonadSkype (Skype SkypeConnection m) where
+  attach = attachX11 . BC.pack =<< liftIO getProgName
 
-  getChannel = Skype $ asks skypeChannel
+  sendCommand command = Skype $ asks (skypeApi . skypeConnection) >>=
+                                liftIO . flip sendTo command
 
--- | runSkype
-runSkype :: Skype m a -> SkypeConnection -> m a
-runSkype (Skype skype) = runReaderT skype
-
--- | withSkype
-withSkype :: SkypeConnection -> Skype m a -> m a
-withSkype = flip runSkype
+  getChannel = Skype $ asks $ skypeChannel . skypeConnection
 
 -- | getDisplayAddress
 getDisplayAddress :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
@@ -184,7 +173,7 @@ createApi address = do
       liftIO $ X.closeDisplay display
       throwError error
 
--- | sendMessage
+-- | sendTo
 sendTo :: SkypeAPI -> BS.ByteString -> IO ()
 sendTo api message = X.allocaXEvent $ \p_event -> do
   let (X.Display display) = skypeDisplay api
