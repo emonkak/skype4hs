@@ -19,15 +19,20 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Web.Skype.API.X11,
                        Web.Skype.Command,
-                       Web.Skype.Core
+                       Web.Skype.Core,
+                       Web.Skype.Parser,
+                       Web.Skype.Protocol
 
   -- other-modules:
   -- other-extensions:
   build-depends:       X11 >=1.6.0.2 && <1.7,
+                       attoparsec >=0.10.4.0 && <0.11,
                        base >=4.6.0.1 && <4.7,
                        bytestring >=0.10.4.0 && <0.11,
                        lifted-base >=0.2.1.1 && <0.3,
                        monad-control >=0.3.2.2 && <0.4,
-                       mtl >=2.1.2 && <2.2
+                       mtl >=2.1.2 && <2.2,
+                       text >=1.0.0.0 && <1.1,
+                       word8 >=0.0.4 && <0.1
   -- hs-source-dirs:
   default-language:    Haskell2010
