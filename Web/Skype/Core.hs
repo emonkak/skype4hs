@@ -2,7 +2,7 @@ module Web.Skype.Core (
   MonadSkype(..),
   Skype(..),
   SkypeChannel,
-  SkypeConfig(..),
+  SkypeEnvironment(..),
   SkypeAttachStatus(..),
   runSkype,
   withSkype
@@ -16,15 +16,15 @@ import Control.Monad.Trans (MonadIO, MonadTrans)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
-newtype Skype c m a = Skype (ReaderT (SkypeConfig c) m a)
+newtype Skype c m a = Skype (ReaderT (SkypeEnvironment c) m a)
   deriving (Applicative, Functor, Monad, MonadIO, MonadTrans)
 
-instance Monad m => MonadReader (SkypeConfig c) (Skype c m) where
+instance Monad m => MonadReader (SkypeEnvironment c) (Skype c m) where
   ask = Skype ask
   local f (Skype m) = Skype $ local f m
   reader = Skype . reader
 
-data SkypeConfig a = SkypeConfig
+data SkypeEnvironment a = SkypeEnvironment
   { skypeTimeout :: Int
   , skypeConnection :: a
   }
@@ -48,9 +48,9 @@ class Monad m => MonadSkype m where
   getChannel :: m SkypeChannel
 
 -- | runSkype
-runSkype :: Skype c m a -> SkypeConfig c -> m a
+runSkype :: Skype c m a -> SkypeEnvironment c -> m a
 runSkype (Skype skype) = runReaderT skype
 
 -- | withSkype
-withSkype :: SkypeConfig c -> Skype c m a -> m a
+withSkype :: SkypeEnvironment c -> Skype c m a -> m a
 withSkype = flip runSkype

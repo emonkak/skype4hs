@@ -15,7 +15,7 @@ import Debug.Trace
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy as BL
 
-attachX11 :: (MonadIO m, MonadReader (SkypeConfig a) m, MonadSkype m)
+attachX11 :: (MonadIO m, MonadReader (SkypeEnvironment c) m, MonadSkype m)
           => BS.ByteString
           -> m SkypeAttachStatus
 attachX11 client = handleCommand command handler >>=
@@ -28,7 +28,7 @@ attachX11 client = handleCommand command handler >>=
     handler "ERROR 68"           = Just SkypeRefused
     handler _                    = Nothing
 
-protocol :: (MonadIO m, MonadReader (SkypeConfig a) m, MonadSkype m)
+protocol :: (MonadIO m, MonadReader (SkypeEnvironment c) m, MonadSkype m)
          => Int
          -> m Bool
 protocol version = handleCommand command handler >>=
@@ -40,7 +40,7 @@ protocol version = handleCommand command handler >>=
       | BL.isPrefixOf "PROTOCOL " responce = Just True
       | otherwise                          = Nothing
 
-handleCommand :: (MonadIO m, MonadReader (SkypeConfig c) m, MonadSkype m)
+handleCommand :: (MonadIO m, MonadReader (SkypeEnvironment c) m, MonadSkype m)
               => BS.ByteString
               -> (BL.ByteString -> Maybe a)
               -> m (Maybe a)
