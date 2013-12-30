@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
-
 module Web.Skype.API.X11 (
   SkypeX11Connection,
   connect,

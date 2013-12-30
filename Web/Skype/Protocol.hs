@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs, GeneralizedNewtypeDeriving #-}
-
 module Web.Skype.Protocol where
 
 import Control.Applicative

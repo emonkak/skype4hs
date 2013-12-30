@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts, GeneralizedNewtypeDeriving, OverloadedStrings, MultiParamTypeClasses #-}
-
 module Web.Skype.Core (
   MonadSkype(..),
   Skype(..),

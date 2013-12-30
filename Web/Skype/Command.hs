@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
-
 module Web.Skype.Command (
   attachX11,
   protocol,

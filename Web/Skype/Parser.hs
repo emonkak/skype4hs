@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
-
 module Web.Skype.Parser (
   parseNotification
 ) where
