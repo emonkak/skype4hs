@@ -18,7 +18,8 @@ import qualified Data.ByteString.Lazy as BL
 attachX11 :: (MonadIO m, MonadReader (SkypeConfig a) m, MonadSkype m)
           => BS.ByteString
           -> m SkypeAttachStatus
-attachX11 client = handleCommand command handler >>= return . fromMaybe SkypeNotAvailable
+attachX11 client = handleCommand command handler >>=
+                   return . fromMaybe SkypeNotAvailable
   where
     command = BS.append "NAME " client
 
@@ -30,7 +31,8 @@ attachX11 client = handleCommand command handler >>= return . fromMaybe SkypeNot
 protocol :: (MonadIO m, MonadReader (SkypeConfig a) m, MonadSkype m)
          => Int
          -> m Bool
-protocol version = handleCommand command handler >>= return . fromMaybe False
+protocol version = handleCommand command handler >>=
+                   return . fromMaybe False
   where
     command = BS.append "PROTOCOL " $ BS.pack $ show version
 

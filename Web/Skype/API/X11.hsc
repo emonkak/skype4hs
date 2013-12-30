@@ -33,6 +33,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BS
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Unsafe as BS
 import qualified Graphics.X11.Xlib as X
 import qualified Graphics.X11.Xlib.Extras as X
 
@@ -184,32 +185,29 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
 
   case unfoldr splitPerChunk message of
     []       -> return ()
-    (bs:[])  -> send p_event $ bs `BS.snoc` 0  -- append NUL
     (bs:bss) -> do
       send p_event bs
 
       #{poke XClientMessageEvent, message_type} p_event $ skypeMessageContinueAtom api
 
-      sendChunks p_event bss
+      mapM_ (send p_event) bss
 
   where
-    sendChunks p_event []       = return ()
-    sendChunks p_event (bs:[])  = send p_event $ bs `BS.snoc` 0  -- append NUL
-    sendChunks p_event (bs:bss) = send p_event bs >> sendChunks p_event bss
+    splitPerChunk bs
+      | BS.null bs = Nothing
+      | BS.length bs < messageChunkSize =
+        Just $ BS.splitAt messageChunkSize bs
+      | otherwise = Just $ BS.splitAt messageChunkSize $ bs `BS.snoc` 0
 
     send p_event chunk = do
       let p_data = #{ptr XClientMessageEvent, data} p_event
 
-      BS.useAsCStringLen chunk $ uncurry $ copyArray p_data
+      BS.unsafeUseAsCStringLen chunk $ uncurry $ copyArray p_data
 
       let display = skypeDisplay api
 
       X.sendEvent display (skypeInstanceWindow api) False 0 p_event
       X.flush display
-
-    splitPerChunk bs
-      | BS.null bs = Nothing
-      | otherwise  = Just $ BS.splitAt messageChunkSize bs
 
 -- | ptrIndex
 ptrIndex :: (Eq a, Storable a) => Ptr a -> a -> Int -> IO (Maybe Int)
@@ -225,6 +223,7 @@ ptrIndex p x n = go 0 x $ take n $ iterate (flip plusPtr 1) p
 -- | messageChunkSize
 messageChunkSize :: Int
 messageChunkSize = #{const sizeof(((XClientMessageEvent *) 0)->data.b) / sizeof(((XClientMessageEvent *) 0)->data.b[0])}
+{-# INLINE messageChunkSize #-}
 
 -- | runEventLoop
 runEventLoop :: SkypeAPI -> (BL.ByteString -> IO ()) -> IO ()
