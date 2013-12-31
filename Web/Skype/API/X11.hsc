@@ -18,7 +18,6 @@ import Control.Monad.Reader (asks)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bits ((.&.))
-import Data.List (unfoldr)
 import Data.Maybe (listToMaybe)
 import Data.Monoid (mappend, mempty)
 import Data.Typeable (Typeable)
@@ -183,7 +182,7 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
   #{poke XClientMessageEvent, message_type} p_event $ skypeMessageBeginAtom api
   #{poke XClientMessageEvent, format}       p_event (8 :: CInt)  -- 8 bit values
 
-  case unfoldr splitPerChunk message of
+  case splitPerChunk message of
     []       -> return ()
     (bs:bss) -> do
       send p_event bs
@@ -194,10 +193,10 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
 
   where
     splitPerChunk bs
-      | BS.null bs = Nothing
-      | BS.length bs < messageChunkSize =
-        Just $ BS.splitAt messageChunkSize bs
-      | otherwise = Just $ BS.splitAt messageChunkSize $ bs `BS.snoc` 0
+      | BS.length bs == messageChunkSize = bs : BS.singleton 0 : []
+      | BS.length bs < messageChunkSize  = BS.snoc bs 0 : []
+      | otherwise                        = let (xs, ys) = BS.splitAt messageChunkSize bs
+                                           in  xs : splitPerChunk ys
 
     send p_event chunk = do
       let p_data = #{ptr XClientMessageEvent, data} p_event
