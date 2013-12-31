@@ -1,17 +1,21 @@
 module Web.Skype.Core (
   MonadSkype(..),
+  Command,
+  CommandID,
   Skype(..),
   SkypeChannel,
   SkypeEnvironment(..),
   SkypeAttachStatus(..),
+  duplicateChannel,
   runSkype,
   withSkype
 ) where
 
 import Control.Applicative (Applicative)
-import Control.Concurrent.Chan (Chan)
+import Control.Concurrent.STM.TChan (TChan, dupTChan)
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), runReaderT)
-import Control.Monad.Trans (MonadIO, MonadTrans)
+import Control.Monad.STM (atomically)
+import Control.Monad.Trans (MonadIO, MonadTrans, liftIO)
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -34,7 +38,10 @@ data SkypeAttachStatus = SkypeAttached
                        | SkypeRefused
   deriving (Eq, Show)
 
-type SkypeChannel = Chan BL.ByteString
+type SkypeChannel = TChan BL.ByteString
+
+type Command = BS.ByteString
+type CommandID = BS.ByteString
 
 -- | Provides the DSL for Skype API.
 class Monad m => MonadSkype m where
@@ -42,7 +49,7 @@ class Monad m => MonadSkype m where
   attach :: m SkypeAttachStatus
 
   -- | Sends the command message to the Skype instance.
-  sendCommand :: BS.ByteString -> m ()
+  sendCommand :: Command -> m ()
 
   -- | Gets the message channel of Skype from the event loop.
   getChannel :: m SkypeChannel
@@ -54,3 +61,7 @@ runSkype (Skype skype) = runReaderT skype
 -- | withSkype
 withSkype :: SkypeEnvironment c -> Skype c m a -> m a
 withSkype = flip runSkype
+
+-- | duplicateChannel
+duplicateChannel :: (MonadIO m, MonadSkype m) => m SkypeChannel
+duplicateChannel = getChannel >>= liftIO . atomically . dupTChan

@@ -8,13 +8,14 @@ module Web.Skype.API.X11 (
 #include <X11/Xlib.h>
 
 import Control.Concurrent (ThreadId, forkIO, killThread)
-import Control.Concurrent.Chan (Chan, dupChan, newChan, writeChan)
+import Control.Concurrent.STM.TChan (TChan, newBroadcastTChanIO, writeTChan)
 import Control.Exception (IOException)
 import Control.Exception.Lifted (catch)
 import Control.Monad (mplus)
 import Control.Monad.Error (Error, strMsg)
 import Control.Monad.Error.Class (MonadError, catchError, throwError)
 import Control.Monad.Reader (asks)
+import Control.Monad.STM (atomically)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bits ((.&.))
@@ -25,8 +26,8 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 import System.Environment (getEnv, getProgName)
-import Web.Skype.Core
 import Web.Skype.Command (attachX11)
+import Web.Skype.Core
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BS
@@ -116,8 +117,8 @@ connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
           -> m SkypeX11Connection
 connectTo address = do
   api <- createApi address
-  chan <- liftIO newChan
-  thread <- liftIO $ forkIO $ runEventLoop api $ writeChan chan
+  chan <- liftIO newBroadcastTChanIO
+  thread <- liftIO $ forkIO $ runEventLoop api $ atomically . writeTChan chan
 
   return SkypeX11Connection
     { skypeApi = api
@@ -193,12 +194,6 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
       mapM_ (send p_event) bss
 
   where
-    splitPerChunk bs
-      | BS.length bs == messageChunkSize = bs : BS.singleton 0 : []
-      | BS.length bs < messageChunkSize  = BS.snoc bs 0 : []
-      | otherwise                        = let (xs, ys) = BS.splitAt messageChunkSize bs
-                                           in  xs : splitPerChunk ys
-
     send p_event chunk = do
       let p_data = #{ptr XClientMessageEvent, data} p_event
 
@@ -208,6 +203,12 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
 
       X.sendEvent display (skypeInstanceWindow api) False 0 p_event
       X.flush display
+
+splitPerChunk bs
+  | BS.length bs == messageChunkSize = bs : BS.singleton 0 : []
+  | BS.length bs < messageChunkSize  = BS.snoc bs 0 : []
+  | otherwise                        = let (xs, ys) = BS.splitAt messageChunkSize bs
+                                       in  xs : splitPerChunk ys
 
 -- | ptrIndex
 ptrIndex :: (Eq a, Storable a) => Ptr a -> a -> Int -> IO (Maybe Int)

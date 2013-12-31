@@ -7,11 +7,9 @@ import System.Posix.Types (EpochTime)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
 
-type CommandId = BS.ByteString
-
-data Notification
-  = ChatNotification (Maybe CommandId) Chat
-  | ChatMessageNotification (Maybe CommandId) ChatMessage
+data Response
+  = ChatResponse ChatID ChatProperty
+  | ChatMessageResponse ChatMessageID ChatMessageProperty
   deriving (Eq, Show)
 
 
@@ -19,7 +17,7 @@ data Notification
 
 -- User  --{{{1
 
-type UserId = BS.ByteString
+type UserID = BS.ByteString
 type UserHandle = T.Text
 type UserDisplayName = T.Text
 
@@ -28,7 +26,7 @@ type UserDisplayName = T.Text
 
 -- Chat  --{{{1
 
-type ChatId = BS.ByteString
+type ChatID = BS.ByteString
 type ChatTopic = T.Text
 type ChatWindowTitle = T.Text
 type ChatPasswordHint = T.Text
@@ -36,27 +34,24 @@ type ChatGuidelines = T.Text
 type ChatDescription = T.Text
 type ChatBlob = BS.ByteString
 
-data Chat = Chat ChatId ChatProperty
-  deriving (Eq, Show)
-
 data ChatProperty
   -- | Chat ID
-  = ChatName ChatId
+  = ChatName ChatID
 
   -- | Time when chat was created.
   | ChatTimestamp EpochTime
 
   -- | User who added the current user to chat.
-  | ChatAdder UserId
+  | ChatAdder UserID
 
   -- | Chat status
   | ChatStatus ChatStatus
 
   -- | Members who have posted messages.
-  | ChatPosters [UserId]
+  | ChatPosters [UserID]
 
   -- | All users who have been there.
-  | ChatMembers [UserId]
+  | ChatMembers [UserID]
 
   -- | Chat topic
   | ChatTopic ChatTopic
@@ -68,22 +63,22 @@ data ChatProperty
   | ChatTopicXml ChatTopic
 
   -- | Members who have stayed in chat.
-  | ChatActiveMembers [UserId]
+  | ChatActiveMembers [UserID]
 
   -- | Name shown in chat window title.
   | ChatFriendyName ChatWindowTitle
 
   -- | All messages IDs in this chat.
-  | ChatMessages [ChatMessageId]
+  | ChatMessages [ChatMessageID]
 
   -- | List of missed/recent chatmessage identifiers
-  | ChatRecentMessages [ChatMessageId]
+  | ChatRecentMessages [ChatMessageID]
 
   -- | TRUE|FALSE
   | ChatBookmarked Bool
 
   -- | Contains the list of CHATMEMBER object IDs.
-  | ChatMemberObjects [ChatMemberId]
+  | ChatMemberObjects [ChatMemberID]
 
   -- | Contains password hint text for the chat object.
   | ChatPasswordHint ChatPasswordHint
@@ -100,7 +95,7 @@ data ChatProperty
 
   -- | The handle of the dialog partner for dialog type chats
   -- (chats with two participants).
-  | ChatDialogPartner UserId
+  | ChatDialogPartner UserID
 
   -- | The UNIX timestamp of last activity.
   | ChatActivityTimestamp EpochTime
@@ -122,7 +117,7 @@ data ChatProperty
   -- join the chat but have not yet been accepted by a public chat
   -- administrator. Users only become applicants when the chat has
   -- JOINERS_BECOME_APPLICANTS option.
-  | ChatApplicants [UserId]
+  | ChatApplicants [UserID]
 
   -- | Chat was opened.
   | ChatOpened
@@ -265,11 +260,8 @@ data ChatRole
 
 -- ChatMessage  --{{{1
 
-type ChatMessageId = Integer
+type ChatMessageID = Integer
 type ChatMessageBody = T.Text
-
-data ChatMessage = ChatMessage ChatMessageId ChatMessageProperty
-  deriving (Eq, Show)
 
 data ChatMessageProperty
   -- | Time when the message was sent (UNIX timestamp).
@@ -291,16 +283,16 @@ data ChatMessageProperty
   | ChatMessageLeaveReason ChatMessageLeaveReason
 
   -- | Chat that includes the message
-  | ChatMessageChatName ChatId
+  | ChatMessageChatName ChatID
 
   -- | People added to chat
-  | ChatMessageUsers [UserId]
+  | ChatMessageUsers [UserID]
 
   -- | TRUE|FALSE
   | ChatMessageIsEditable Bool
 
   -- | Identity of the last user who edited the message.
-  | ChatMessageEditedBy UserId
+  | ChatMessageEditedBy UserID
 
   -- | UNIX timestamp of the last edit.
   | ChatMessageEditedTimestamp EpochTime
@@ -423,7 +415,7 @@ data ChatMessageLeaveReason
 
 -- ChatMember  --{{{1
 
-type ChatMemberId = Integer
+type ChatMemberID = Integer
 
 data ChatMemberProperty
   = ChatMemberProperty

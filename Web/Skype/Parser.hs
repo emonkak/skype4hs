@@ -1,5 +1,6 @@
 module Web.Skype.Parser (
-  parseNotification
+  parseResponse,
+  parseResponseWithCommandID
 ) where
 
 import Control.Applicative
@@ -7,8 +8,9 @@ import Data.Attoparsec.ByteString.Char8 (decimal)
 import Data.Attoparsec.ByteString.Lazy
 import Data.Attoparsec.Combinator
 import Data.Word8
-import Foreign.C.Types
+import Foreign.C.Types (CTime(..))
 import System.Posix.Types (EpochTime)
+import Web.Skype.Core
 import Web.Skype.Protocol
 
 import qualified Data.Text as T
@@ -16,46 +18,47 @@ import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
-parseNotification :: BL.ByteString -> Either String Notification
-parseNotification = eitherResult . parse p_notification
+parseResponse :: BL.ByteString -> Either String Response
+parseResponse = eitherResult . parse p_response
 
-p_commandId :: Parser CommandId
-p_commandId = (word8 _numbersign) *> takeWhile1 (not . isSpace)
+parseResponseWithCommandID :: BL.ByteString -> Either String (CommandID, Response)
+parseResponseWithCommandID = eitherResult . parse p_responseWithCommandID
 
-p_notification :: Parser Notification
-p_notification = choice
-  [ ChatNotification <$> p_maybeCommandId <*> p_chat
-  , ChatMessageNotification <$> p_maybeCommandId <*> p_chatMessage
-  ]
-  where
-    p_maybeCommandId = (pure <$> p_commandId <* spaces) <|> pure Nothing
+p_response :: Parser Response
+p_response = p_chat <|> p_chatMessage
 
-p_userId :: Parser UserId
-p_userId = takeWhile1 $ \c ->
+p_responseWithCommandID :: Parser (CommandID, Response)
+p_responseWithCommandID = (,) <$> p_commandID <* spaces <*> p_response
+
+p_commandID :: Parser CommandID
+p_commandID = (word8 _numbersign) *> takeWhile1 (not . isSpace)
+
+p_userID :: Parser UserID
+p_userID = takeWhile1 $ \c ->
            any ($ c) [isAlpha, isDigit, (==) _underscore, (==) _hyphen]
 
 p_userHandle :: Parser UserHandle
 p_userHandle = takeText
 
-p_chat :: Parser Chat
+p_chat :: Parser Response
 p_chat = string "CHAT"
       *> spaces
-      *> (Chat <$> (p_chatId <* spaces) <*> p_chatProperty)
+      *> (ChatResponse <$> (p_chatID <* spaces) <*> p_chatProperty)
 
-p_chatId :: Parser ChatId
-p_chatId = takeWhile1 $ not . isSpace
+p_chatID :: Parser ChatID
+p_chatID = takeWhile1 $ not . isSpace
 
 p_chatProperty :: Parser ChatProperty
 p_chatProperty = choice
-  [ ChatName              <$> (property "NAME" *> p_chatId)
+  [ ChatName              <$> (property "NAME" *> p_chatID)
   , ChatTimestamp         <$> (property "TIMESTAMP" *> p_timestamp)
-  , ChatAdder             <$> (property "ADDER" *> p_userId)
+  , ChatAdder             <$> (property "ADDER" *> p_userID)
   , ChatStatus            <$> (property "STATUS" *> p_chatStatus)
-  , ChatPosters           <$> (property "POSTERS" *> p_userIds)
-  , ChatMembers           <$> (property "MEMBERS" *> p_userIds)
+  , ChatPosters           <$> (property "POSTERS" *> p_userIDs)
+  , ChatMembers           <$> (property "MEMBERS" *> p_userIDs)
   , ChatTopic             <$> (property "TOPIC" *> p_chatTopic)
   , ChatTopicXml          <$> (property "TOPICXML" *> p_chatTopic)
-  , ChatActiveMembers     <$> (property "ACTIVEMEMBERS" *> p_userIds)
+  , ChatActiveMembers     <$> (property "ACTIVEMEMBERS" *> p_userIDs)
   , ChatFriendyName       <$> (property "FRIENDLYNAME" *> p_chatWindowTitle)
   , ChatMessages          <$> (property "CHATMESSAGES" *> p_chatMessages)
   , ChatRecentMessages    <$> (property "RECENTCHATMESSAGES" *> p_chatMessages)
@@ -65,24 +68,24 @@ p_chatProperty = choice
   , ChatGuidelines        <$> (property "GUIDELINES" *> p_chatGuidelines)
   , ChatOptions           <$> (property "OPTIONS" *> p_chatOptions)
   , ChatDescription       <$> (property "DESCRIPTION" *> p_chatDescription)
-  , ChatDialogPartner     <$> (property "DIALOG_PARTNER" *> p_userId)
+  , ChatDialogPartner     <$> (property "DIALOG_PARTNER" *> p_userID)
   , ChatActivityTimestamp <$> (property "ACTIVITY_TIMESTAMP" *> p_timestamp)
   , ChatType              <$> (property "TYPE" *> p_chatType)
   , ChatMyStatus          <$> (property "MYSTATUS" *> p_chatMyStatus)
   , ChatMyRole            <$> (property "MYROLE" *> p_chatRole)
   , ChatBlob              <$> (property "BLOB" *> p_chatBlob)
-  , ChatApplicants        <$> (property "APPLICANTS" *> p_userIds)
+  , ChatApplicants        <$> (property "APPLICANTS" *> p_userIDs)
   , ChatClosed            <$  (string "CLOSED" *> endOfInput)
   , ChatOpened            <$  (string "OPENED" *> endOfInput)
   ]
   where
     property prop = string prop *> spaces
 
-    p_userIds = p_userId `sepBy` spaces
+    p_userIDs = p_userID `sepBy` spaces
 
-    p_chatMessages = p_chatMessageId `sepBy` (word8 _comma *> spaces)
+    p_chatMessages = p_chatMessageID `sepBy` (word8 _comma *> spaces)
 
-    p_chatMemberObjects = p_chatMemberId `sepBy` (word8 _comma *> spaces)
+    p_chatMemberObjects = p_chatMemberID `sepBy` (word8 _comma *> spaces)
 
 p_chatStatus :: Parser ChatStatus
 p_chatStatus = choice
@@ -95,14 +98,14 @@ p_chatStatus = choice
 p_chatTopic :: Parser ChatTopic
 p_chatTopic = takeText
 
-p_chatMessageId :: Parser ChatMessageId
-p_chatMessageId = decimal
+p_chatMessageID :: Parser ChatMessageID
+p_chatMessageID = decimal
 
 p_chatWindowTitle :: Parser ChatWindowTitle
 p_chatWindowTitle = takeText
 
-p_chatMemberId :: Parser ChatMemberId
-p_chatMemberId = decimal
+p_chatMemberID :: Parser ChatMemberID
+p_chatMemberID = decimal
 
 p_chatPasswordHint :: Parser ChatPasswordHint
 p_chatPasswordHint = takeText
@@ -154,10 +157,10 @@ p_chatRole = choice
 p_chatBlob :: Parser ChatBlob
 p_chatBlob = takeByteString
 
-p_chatMessage :: Parser ChatMessage
+p_chatMessage :: Parser Response
 p_chatMessage = string "CHATMESSAGE"
       *> spaces
-      *> (ChatMessage <$> (p_chatMessageId <* spaces) <*> p_chatMessageProperty)
+      *> (ChatMessageResponse <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)
 
 p_chatMessageProperty :: Parser ChatMessageProperty
 p_chatMessageProperty = choice
@@ -167,10 +170,10 @@ p_chatMessageProperty = choice
   , ChatMessageType            <$> (property "TYPE" *> p_chatMessageType)
   , ChatMessageStatus          <$> (property "STATUS" *> p_chatMessageStatus)
   , ChatMessageLeaveReason     <$> (property "LEAVEREASON" *> p_chatMessageLeaveReason)
-  , ChatMessageChatName        <$> (property "CHATNAME" *> p_chatId)
-  , ChatMessageUsers           <$> (property "USERS" *> p_userIds)
+  , ChatMessageChatName        <$> (property "CHATNAME" *> p_chatID)
+  , ChatMessageUsers           <$> (property "USERS" *> p_userIDs)
   , ChatMessageIsEditable      <$> (property "IS_EDITABLE" *> p_boolean)
-  , ChatMessageEditedBy        <$> (property "EDITED_BY" *> p_userId)
+  , ChatMessageEditedBy        <$> (property "EDITED_BY" *> p_userID)
   , ChatMessageEditedTimestamp <$> (property "EDITED_TIMESTAMP" *> p_timestamp)
   , ChatMessageOptions         <$> (property "OPTIONS" *> p_chatOptions)
   , ChatMessageRole            <$> (property "ROLE" *> p_chatRole)
@@ -180,7 +183,7 @@ p_chatMessageProperty = choice
   where
     property prop = string prop *> spaces
 
-    p_userIds = p_userId `sepBy` spaces
+    p_userIDs = p_userID `sepBy` spaces
 
 p_chatMessageBody :: Parser ChatMessageBody
 p_chatMessageBody = takeText
