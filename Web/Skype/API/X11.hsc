@@ -184,6 +184,7 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
 
   case splitPerChunk message of
     []       -> return ()
+    (bs:[])  -> send p_event bs
     (bs:bss) -> do
       send p_event bs
 
