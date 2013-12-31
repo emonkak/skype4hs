@@ -18,16 +18,16 @@ import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
-parseResponse :: BL.ByteString -> Either String Response
+parseResponse :: BL.ByteString -> Either String SkypeResponse
 parseResponse = eitherResult . parse p_response
 
-parseResponseWithCommandID :: BL.ByteString -> Either String (CommandID, Response)
+parseResponseWithCommandID :: BL.ByteString -> Either String (CommandID, SkypeResponse)
 parseResponseWithCommandID = eitherResult . parse p_responseWithCommandID
 
-p_response :: Parser Response
+p_response :: Parser SkypeResponse
 p_response = p_chat <|> p_chatMessage
 
-p_responseWithCommandID :: Parser (CommandID, Response)
+p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
 p_responseWithCommandID = (,) <$> p_commandID <* spaces <*> p_response
 
 p_commandID :: Parser CommandID
@@ -40,7 +40,7 @@ p_userID = takeWhile1 $ \c ->
 p_userHandle :: Parser UserHandle
 p_userHandle = takeText
 
-p_chat :: Parser Response
+p_chat :: Parser SkypeResponse
 p_chat = string "CHAT"
       *> spaces
       *> (ChatResponse <$> (p_chatID <* spaces) <*> p_chatProperty)
@@ -157,7 +157,7 @@ p_chatRole = choice
 p_chatBlob :: Parser ChatBlob
 p_chatBlob = takeByteString
 
-p_chatMessage :: Parser Response
+p_chatMessage :: Parser SkypeResponse
 p_chatMessage = string "CHATMESSAGE"
       *> spaces
       *> (ChatMessageResponse <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)

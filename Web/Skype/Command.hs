@@ -95,7 +95,7 @@ handleCommand command handler = do
 
 handleCommandWithID :: (MonadIO m, MonadReader (SkypeEnvironment c) m, MonadSkype m)
                     => Command
-                    -> (Response -> Maybe a)
+                    -> (SkypeResponse -> Maybe a)
                     -> m (Maybe a)
 handleCommandWithID command handler = do
   commandID <- liftIO $ (BB.intDec . hashUnique) `fmap` newUnique

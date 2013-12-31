@@ -7,7 +7,7 @@ import System.Posix.Types (EpochTime)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
 
-data Response
+data SkypeResponse
   = ChatResponse ChatID ChatProperty
   | ChatMessageResponse ChatMessageID ChatMessageProperty
   deriving (Eq, Show)
