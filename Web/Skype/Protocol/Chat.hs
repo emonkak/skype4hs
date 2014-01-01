@@ -1,30 +1,11 @@
-module Web.Skype.Protocol where
+module Web.Skype.Protocol.Chat where
 
-import Control.Applicative
 import Data.Bits (Bits)
 import System.Posix.Types (EpochTime)
+import Web.Skype.Protocol.User
 
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
-
-data SkypeResponse
-  = ChatResponse ChatID ChatProperty
-  | ChatMessageResponse ChatMessageID ChatMessageProperty
-  deriving (Eq, Show)
-
-
-
-
--- User  --{{{1
-
-type UserID = BS.ByteString
-type UserHandle = T.Text
-type UserDisplayName = T.Text
-
-
-
-
--- Chat  --{{{1
 
 type ChatID = BS.ByteString
 type ChatTopic = T.Text
@@ -33,6 +14,11 @@ type ChatPasswordHint = T.Text
 type ChatGuidelines = T.Text
 type ChatDescription = T.Text
 type ChatBlob = BS.ByteString
+
+type ChatMessageID = Integer
+type ChatMessageBody = T.Text
+
+type ChatMemberID = Integer
 
 data ChatProperty
   -- | Chat ID
@@ -255,14 +241,6 @@ data ChatRole
   | ChatRoleApplicant
   deriving (Eq, Show)
 
-
-
-
--- ChatMessage  --{{{1
-
-type ChatMessageID = Integer
-type ChatMessageBody = T.Text
-
 data ChatMessageProperty
   -- | Time when the message was sent (UNIX timestamp).
   = ChatMessageTimestamp EpochTime
@@ -409,13 +387,6 @@ data ChatMessageLeaveReason
   -- | Participant left chat
   | ChatMessageLeaveReasonUnsubscribe
   deriving (Eq, Show)
-
-
-
-
--- ChatMember  --{{{1
-
-type ChatMemberID = Integer
 
 data ChatMemberProperty
   = ChatMemberProperty

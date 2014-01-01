@@ -1,6 +1,7 @@
 module Web.Skype.Parser (
-  parseResponse,
-  parseResponseWithCommandID
+  Notification(..),
+  parseNotification,
+  parseNotificationWithCommandID
 ) where
 
 import Control.Applicative
@@ -11,24 +12,30 @@ import Data.Word8
 import Foreign.C.Types (CTime(..))
 import System.Posix.Types (EpochTime)
 import Web.Skype.Core
-import Web.Skype.Protocol
+import Web.Skype.Protocol.Chat
+import Web.Skype.Protocol.User
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
-parseResponse :: BL.ByteString -> Either String SkypeResponse
-parseResponse = eitherResult . parse p_response
+data Notification
+  = Chat ChatID ChatProperty
+  | ChatMessage ChatMessageID ChatMessageProperty
+  deriving (Eq, Show)
 
-parseResponseWithCommandID :: BL.ByteString -> Either String (CommandID, SkypeResponse)
-parseResponseWithCommandID = eitherResult . parse p_responseWithCommandID
+parseNotification :: BL.ByteString -> Either String Notification
+parseNotification = eitherResult . parse p_response
 
-p_response :: Parser SkypeResponse
+parseNotificationWithCommandID :: BL.ByteString -> Either String (CommandID, Notification)
+parseNotificationWithCommandID = eitherResult . parse p_responseWithCommandID
+
+p_response :: Parser Notification
 p_response = p_chat <|> p_chatMessage
 
-p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
-p_responseWithCommandID = (,) <$> p_commandID <* spaces <*> p_response
+p_responseWithCommandID :: Parser (CommandID, Notification)
+p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
 
 p_commandID :: Parser CommandID
 p_commandID = (word8 _numbersign) *> takeWhile1 (not . isSpace)
@@ -40,10 +47,10 @@ p_userID = takeWhile1 $ \c ->
 p_userHandle :: Parser UserHandle
 p_userHandle = takeText
 
-p_chat :: Parser SkypeResponse
+p_chat :: Parser Notification
 p_chat = string "CHAT"
       *> spaces
-      *> (ChatResponse <$> (p_chatID <* spaces) <*> p_chatProperty)
+      *> (Chat <$> (p_chatID <* spaces) <*> p_chatProperty)
 
 p_chatID :: Parser ChatID
 p_chatID = takeWhile1 $ not . isSpace
@@ -157,10 +164,10 @@ p_chatRole = choice
 p_chatBlob :: Parser ChatBlob
 p_chatBlob = takeByteString
 
-p_chatMessage :: Parser SkypeResponse
+p_chatMessage :: Parser Notification
 p_chatMessage = string "CHATMESSAGE"
       *> spaces
-      *> (ChatMessageResponse <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)
+      *> (ChatMessage <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)
 
 p_chatMessageProperty :: Parser ChatMessageProperty
 p_chatMessageProperty = choice

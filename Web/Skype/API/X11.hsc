@@ -26,8 +26,8 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 import System.Environment (getEnv, getProgName)
-import Web.Skype.Command (attachX11)
-import Web.Skype.Core
+import Web.Skype.Command.Internal (attachX11)
+import Web.Skype.Internal
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BS
@@ -58,7 +58,9 @@ instance MonadIO m => MonadSkype (Skype SkypeX11Connection m) where
   sendCommand command = Skype $ asks (skypeApi . skypeConnection) >>=
                                 liftIO . flip sendTo command
 
-  getChannel = Skype $ asks $ skypeChannel . skypeConnection
+  getSkypeChannel = Skype $ asks $ skypeChannel . skypeConnection
+
+  getTimeout = asks skypeTimeout
 
 -- | getDisplayAddress
 getDisplayAddress :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
