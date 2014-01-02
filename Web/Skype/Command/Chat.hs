@@ -5,7 +5,7 @@ import Control.Monad.Trans (MonadIO)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import System.Posix.Types (EpochTime)
-import Web.Skype.Command.Internal
+import Web.Skype.Command.Utils
 import Web.Skype.Core
 import Web.Skype.Parser
 import Web.Skype.Protocol.Chat
@@ -18,110 +18,137 @@ import qualified Data.Text.Encoding as T
 getRecentChatMessages :: (MonadIO m, MonadSkype m)
                       => ChatID
                       -> m [ChatMessageID]
-getRecentChatMessages chatID = handleCommandWithID command handler >>=
-                               return . fromMaybe []
+getRecentChatMessages chatID =
+  handleCommandWithID command $ \response ->
+    case response of
+      Chat _ (ChatRecentMessages chatMessageIDs) -> Just chatMessageIDs
+      _                                          -> Nothing
   where
     command = "GET CHAT " <> chatID <> " RECENTCHATMESSAGES"
-
-    handler (Chat _ (ChatRecentMessages chatMessageIDs)) = Just chatMessageIDs
-    handler _ = Nothing
 
 -- | GET CHATMESSAGE <id> TIMESTAMP
 getChatMessageTimestamp :: (MonadIO m, MonadSkype m)
                         => ChatMessageID
-                        -> m (Maybe EpochTime)
-getChatMessageTimestamp messageID = handleCommandWithID command handler
+                        -> m EpochTime
+getChatMessageTimestamp messageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageTimestamp timestamp) -> Just timestamp
+      _                                              -> Nothing
   where
-    command = "GET CHATMESSAGE " <> BC.pack (show messageID) <> " TIMESTAMP"
-
-    handler (ChatMessage _ (ChatMessageTimestamp timestamp)) = Just timestamp
-    handler _ = Nothing
+    command = "GET CHATMESSAGE " <> BC.pack (show messageID)
+                                 <> " TIMESTAMP"
 
 -- | GET CHATMESSAGE <id> FROM_HANDLE
 getChatMessageFromHandle :: (MonadIO m, MonadSkype m)
                          => ChatMessageID
-                         -> m (Maybe UserHandle)
-getChatMessageFromHandle chatMessageID = handleCommandWithID command handler
+                         -> m UserHandle
+getChatMessageFromHandle chatMessageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageFromHandle userHandle) -> Just userHandle
+      _                                                -> Nothing
   where
-    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " FROM_HANDLE"
-
-    handler (ChatMessage _ (ChatMessageFromHandle userHandle)) = Just userHandle
-    handler _ = Nothing
+    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " FROM_HANDLE"
 
 -- | GET CHATMESSAGE <id> FROM_DISPNAME
 getChatMessageFromDisplayName :: (MonadIO m, MonadSkype m)
                               => ChatMessageID
-                              -> m (Maybe UserHandle)
-getChatMessageFromDisplayName chatMessageID = handleCommandWithID command handler
-  where
-    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " FROM_DISPNAME"
+                              -> m UserHandle
+getChatMessageFromDisplayName chatMessageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageFromDisplayName userHandle) -> Just userHandle
+      _                                                     -> Nothing
 
-    handler (ChatMessage _ (ChatMessageFromDisplayName userHandle)) = Just userHandle
-    handler _ = Nothing
+  where
+    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " FROM_DISPNAME"
 
 -- | GET CHATMESSAGE <id> TYPE
 getChatMessageType :: (MonadIO m, MonadSkype m)
                    => ChatMessageID
-                   -> m (Maybe ChatMessageType)
-getChatMessageType chatMessageID = handleCommandWithID command handler
+                   -> m ChatMessageType
+getChatMessageType chatMessageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageType messageType) -> Just messageType
+      _                                           -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " TYPE"
-
-    handler (ChatMessage _ (ChatMessageType messageType)) = Just messageType
-    handler _ = Nothing
 
 -- | GET CHATMESSAGE <id> STATUS
 getChatMessageStatus :: (MonadIO m, MonadSkype m)
                      => ChatMessageID
-                     -> m (Maybe ChatMessageStatus)
-getChatMessageStatus chatMessageID = handleCommandWithID command handler
+                     -> m ChatMessageStatus
+getChatMessageStatus chatMessageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageStatus messageStatus) -> Just messageStatus
+      _                                               -> Nothing
   where
-    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " STATUS"
-
-    handler (ChatMessage _ (ChatMessageStatus messageStatus)) = Just messageStatus
-    handler _ = Nothing
+    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " STATUS"
 
 -- | GET CHATMESSAGE <id> LEAVEREASON
 getChatMessageLeaveReason :: (MonadIO m, MonadSkype m)
                           => ChatMessageID
-                          -> m (Maybe ChatMessageLeaveReason)
-getChatMessageLeaveReason chatMessageID = handleCommandWithID command handler
+                          -> m ChatMessageLeaveReason
+getChatMessageLeaveReason chatMessageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageLeaveReason leaveReason) -> Just leaveReason
+      _                                                  -> Nothing
   where
-    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " LEAVEREASON"
-
-    handler (ChatMessage _ (ChatMessageLeaveReason leaveReason)) = Just leaveReason
-    handler _ = Nothing
+    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " LEAVEREASON"
 
 -- | GET CHATMESSAGE <id> CHATNAME
 getChatMessageChatName :: (MonadIO m, MonadSkype m)
                        => ChatMessageID
-                       -> m (Maybe ChatID)
-getChatMessageChatName chatMessageID = handleCommandWithID command handler
+                       -> m ChatID
+getChatMessageChatName chatMessageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageChatName chatID) -> Just chatID
+      _                                          -> Nothing
   where
-    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " CHATNAME"
-
-    handler (ChatMessage _ (ChatMessageChatName chatID)) = Just chatID
-    handler _ = Nothing
+    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " CHATNAME"
 
 -- | GET CHATMESSAGE <id> BODY
 getChatMessageBody :: (MonadIO m, MonadSkype m)
                    => ChatMessageID
-                   -> m (Maybe ChatMessageBody)
-getChatMessageBody chatMessageID = handleCommandWithID command handler
+                   -> m ChatMessageBody
+getChatMessageBody chatMessageID =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage _ (ChatMessageBody messageBody) -> Just messageBody
+      _                                           -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " BODY"
 
-    handler (ChatMessage _ (ChatMessageBody body)) = Just body
-    handler _ = Nothing
-
 -- | CHATMESSAGE <chat_id> <message>
-sendMessage :: (MonadIO m, MonadSkype m)
-            => ChatID
-            -> ChatMessageBody
-            -> m (Maybe ChatMessageID)
-sendMessage chatID messageBody = handleCommandWithID command handler
+sendChatMessage :: (MonadIO m, MonadSkype m)
+                => ChatID
+                -> ChatMessageBody
+                -> m ChatMessageID
+sendChatMessage chatID messageBody =
+  handleCommandWithID command $ \response ->
+    case response of
+      ChatMessage chatMessageID _ -> Just chatMessageID
+      _                           -> Nothing
   where
     command = "CHATMESSAGE " <> chatID <> " " <> T.encodeUtf8 messageBody
 
-    handler (ChatMessage chatMessageID _) = Just chatMessageID
-    handler _ = Nothing
+-- | ALTER CHAT <chat_id> LEAVE
+leaveChat :: (MonadIO m, MonadSkype m)
+          => ChatID
+          -> m ()
+leaveChat chatID = handleCommand command $ \response ->
+  case response of
+    "ALTER CHAT LEAVE" -> Just ()
+    _                  -> Nothing
+  where
+    command = "ALTER CHAT " <> chatID <> " LEAVE"

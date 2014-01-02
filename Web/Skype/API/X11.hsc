@@ -26,8 +26,8 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 import System.Environment (getEnv, getProgName)
-import Web.Skype.Command.Internal (attachX11)
-import Web.Skype.Internal
+import Web.Skype.Command.Communication (attachX11)
+import Web.Skype.Core
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BS
