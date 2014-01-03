@@ -1,44 +1,80 @@
 module Web.Skype.Parser (
-  Notification(..),
-  parseNotification,
-  parseNotificationWithCommandID
+  SkypeResponse(..),
+  parseResponse,
+  parseResponseWithCommandID
 ) where
 
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8 (decimal)
 import Data.Attoparsec.ByteString.Lazy
 import Data.Attoparsec.Combinator
+import Data.Maybe (fromMaybe)
 import Data.Word8
 import Foreign.C.Types (CTime(..))
-import System.Posix.Types (EpochTime)
 import Web.Skype.Core
-import Web.Skype.Protocol.Chat
-import Web.Skype.Protocol.User
+import Web.Skype.Protocol
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
-data Notification
-  = Chat ChatID ChatProperty
-  | ChatMessage ChatMessageID ChatMessageProperty
+-- Public API  --{{{1
+
+type Response = BL.ByteString
+
+data SkypeResponse
+  = AlterChatSetTopic
+  | AlterChatAddMembers
+  | AlterChatJoin
+  | AlterChatLeave
+  | AlterChatBookmarked Bool
+  | AlterChatClearRecentMessages
+  | AlterChatSetAlertString
+  | AlterChatAcceptAdd
+  | AlterChatDisband
+  | AlterChatSetPassword
+  | AlterChatEnterPassword
+  | AlterChatSetOptions
+  | ChatResponse ChatID ChatProperty
+  | ChatMessageResponse ChatMessageID ChatMessageProperty
+  | ErrorResponse SkypeError
   deriving (Eq, Show)
 
-parseNotification :: BL.ByteString -> Either String Notification
-parseNotification = eitherResult . parse p_response
+parseResponse :: Response -> Maybe SkypeResponse
+parseResponse = maybeResult . parse p_response
 
-parseNotificationWithCommandID :: BL.ByteString -> Either String (CommandID, Notification)
-parseNotificationWithCommandID = eitherResult . parse p_responseWithCommandID
+parseResponseWithCommandID :: Response -> Maybe (CommandID, SkypeResponse)
+parseResponseWithCommandID = maybeResult . parse p_responseWithCommandID
 
-p_response :: Parser Notification
-p_response = p_chat <|> p_chatMessage
 
-p_responseWithCommandID :: Parser (CommandID, Notification)
-p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
 
-p_commandID :: Parser CommandID
-p_commandID = (word8 _numbersign) *> takeWhile1 (not . isSpace)
+
+-- ALTER  --{{{1
+
+p_alterResponse :: Parser SkypeResponse
+p_alterResponse = string "ALTER" *> spaces *> choice
+  [ p_chat ]
+  where
+    p_chat = string "CHAT" *> spaces *> choice
+      [ AlterChatSetTopic            <$  (string "SETTOPIC")
+      , AlterChatAddMembers          <$  (string "ADDMEMBERS")
+      , AlterChatJoin                <$  (string "JOIN")
+      , AlterChatLeave               <$  (string "LEAVE")
+      , AlterChatBookmarked          <$> (string "BOOKMARKED" *> p_boolean)
+      , AlterChatClearRecentMessages <$  (string "CLEARRECENTMESSAGES")
+      , AlterChatSetAlertString      <$  (string "SETALERTSTRING")
+      , AlterChatAcceptAdd           <$  (string "ACCEPTADD")
+      , AlterChatDisband             <$  (string "DISBAND")
+      , AlterChatSetPassword         <$  (string "SETPASSWORD")
+      , AlterChatEnterPassword       <$  (string "ENTERPASSWORD")
+      , AlterChatSetOptions          <$  (string "SETOPTIONS")
+      ]
+
+
+
+
+-- USER  --{{{1
 
 p_userID :: Parser UserID
 p_userID = takeWhile1 $ \c ->
@@ -47,10 +83,15 @@ p_userID = takeWhile1 $ \c ->
 p_userHandle :: Parser UserHandle
 p_userHandle = takeText
 
-p_chat :: Parser Notification
+
+
+
+-- CHAT  --{{{1
+
+p_chat :: Parser SkypeResponse
 p_chat = string "CHAT"
       *> spaces
-      *> (Chat <$> (p_chatID <* spaces) <*> p_chatProperty)
+      *> (ChatResponse <$> (p_chatID <* spaces) <*> p_chatProperty)
 
 p_chatID :: Parser ChatID
 p_chatID = takeWhile1 $ not . isSpace
@@ -164,10 +205,15 @@ p_chatRole = choice
 p_chatBlob :: Parser ChatBlob
 p_chatBlob = takeByteString
 
-p_chatMessage :: Parser Notification
+
+
+
+-- CHATMESSAGE  --{{{1
+
+p_chatMessage :: Parser SkypeResponse
 p_chatMessage = string "CHATMESSAGE"
       *> spaces
-      *> (ChatMessage <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)
+      *> (ChatMessageResponse <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)
 
 p_chatMessageProperty :: Parser ChatMessageProperty
 p_chatMessageProperty = choice
@@ -232,10 +278,40 @@ p_chatMessageLeaveReason = choice
   , ChatMessageLeaveReasonUnsubscribe           <$ string "UNSUBSCRIBE"
   ]
 
+
+
+
+-- ERROR  --{{{1
+
+p_error :: Parser SkypeResponse
+p_error = ErrorResponse <$> (SkypeError <$> p_code <*> (p_description <|> pure ""))
+  where
+    p_code = string "ERROR" *> spaces *> decimal
+
+    p_description = spaces *> (T.decodeUtf8 <$> takeByteString)
+
+
+
+
+-- Misc.  --{{{1
+
+p_response :: Parser SkypeResponse
+p_response = choice
+  [ p_alterResponse
+  , p_chat
+  , p_chatMessage
+  , p_error
+  ]
+
+p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
+p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
+  where
+    p_commandID = (word8 _numbersign) *> takeWhile1 (not . isSpace)
+
 p_boolean :: Parser Bool
 p_boolean = (True <$ string "TRUE") <|> (False <$ string "FALSE")
 
-p_timestamp :: Parser EpochTime
+p_timestamp :: Parser Timestamp
 p_timestamp = CTime <$> decimal
 
 spaces :: Parser BS.ByteString

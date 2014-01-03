@@ -3,7 +3,6 @@ module Web.Skype.Core (
   CommandID,
   MonadSkype(..),
   Skype(..),
-  SkypeAttachStatus(..),
   SkypeChannel,
   SkypeEnvironment(..),
   SkypeError(..),
@@ -34,7 +33,7 @@ type SkypeChannel = TChan BL.ByteString
 -- | Provides the DSL for Skype API.
 class (Monad m, MonadError SkypeError m) => MonadSkype m where
   -- | Attaches to the skype instance.
-  attach :: m SkypeAttachStatus
+  attach :: m ()
 
   -- | Sends the command message to the Skype instance.
   sendCommand :: Command -> m ()
@@ -47,11 +46,6 @@ class (Monad m, MonadError SkypeError m) => MonadSkype m where
 
 newtype Skype c m a = Skype (ErrorT SkypeError (ReaderT (SkypeEnvironment c) m) a)
   deriving (Monad, MonadIO, MonadError SkypeError, MonadReader (SkypeEnvironment c))
-
-data SkypeAttachStatus = SkypeAttached
-                       | SkypeNotAvailable
-                       | SkypeRefused
-  deriving (Eq, Show)
 
 data SkypeEnvironment c = SkypeEnvironment
   { skypeTimeout :: Int
