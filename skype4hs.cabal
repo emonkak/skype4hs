@@ -24,13 +24,13 @@ library
                        Web.Skype.Command.Utils,
                        Web.Skype.Core,
                        Web.Skype.Parser,
-                       Web.Skype.Protocol,
+                       Web.Skype.Protocol
+  other-modules:
                        Web.Skype.Protocol.Chat,
                        Web.Skype.Protocol.ChatMember,
                        Web.Skype.Protocol.ChatMessage,
                        Web.Skype.Protocol.Types,
                        Web.Skype.Protocol.User
-  -- other-modules:
   -- other-extensions:
   build-depends:       X11 >=1.6.1,
                        attoparsec >=0.10,
