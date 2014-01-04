@@ -1,5 +1,4 @@
 module Web.Skype.Parser (
-  SkypeResponse(..),
   parseResponse,
   parseResponseWithCommandID
 ) where
@@ -21,39 +20,40 @@ import qualified Data.ByteString.Lazy as BL
 
 -- Public API  --{{{1
 
-type Response = BL.ByteString
-
-data SkypeResponse
-  = AlterChatSetTopic
-  | AlterChatAddMembers
-  | AlterChatJoin
-  | AlterChatLeave
-  | AlterChatBookmarked Bool
-  | AlterChatClearRecentMessages
-  | AlterChatSetAlertString
-  | AlterChatAcceptAdd
-  | AlterChatDisband
-  | AlterChatSetPassword
-  | AlterChatEnterPassword
-  | AlterChatSetOptions
-  | ChatResponse ChatID ChatProperty
-  | ChatMessageResponse ChatMessageID ChatMessageProperty
-  | ErrorResponse SkypeError
-  deriving (Eq, Show)
-
-parseResponse :: Response -> Maybe SkypeResponse
+parseResponse :: BL.ByteString -> Maybe SkypeResponse
 parseResponse = maybeResult . parse p_response
 
-parseResponseWithCommandID :: Response -> Maybe (CommandID, SkypeResponse)
+parseResponseWithCommandID :: BL.ByteString -> Maybe (CommandID, SkypeResponse)
 parseResponseWithCommandID = maybeResult . parse p_responseWithCommandID
+
+
+
+
+-- Main  --{{{1
+
+p_response :: Parser SkypeResponse
+p_response = choice
+  [ p_alter
+  , p_chat
+  , p_chatMessage
+  , p_connectionStatus
+  , p_error
+  , p_ok
+  , p_protocol
+  ]
+
+p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
+p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
+  where
+    p_commandID = word8 _numbersign *> takeWhile1 (not . isSpace)
 
 
 
 
 -- ALTER  --{{{1
 
-p_alterResponse :: Parser SkypeResponse
-p_alterResponse = string "ALTER" *> spaces *> choice
+p_alter :: Parser SkypeResponse
+p_alter = string "ALTER" *> spaces *> choice
   [ p_chat ]
   where
     p_chat = string "CHAT" *> spaces *> choice
@@ -74,18 +74,6 @@ p_alterResponse = string "ALTER" *> spaces *> choice
 
 
 
--- USER  --{{{1
-
-p_userID :: Parser UserID
-p_userID = takeWhile1 $ \c ->
-           any ($ c) [isAlpha, isDigit, (==) _underscore, (==) _hyphen]
-
-p_userHandle :: Parser UserHandle
-p_userHandle = takeText
-
-
-
-
 -- CHAT  --{{{1
 
 p_chat :: Parser SkypeResponse
@@ -94,7 +82,7 @@ p_chat = string "CHAT"
       *> (ChatResponse <$> (p_chatID <* spaces) <*> p_chatProperty)
 
 p_chatID :: Parser ChatID
-p_chatID = takeWhile1 $ not . isSpace
+p_chatID = ChatID <$> (takeWhile1 $ not . isSpace)
 
 p_chatProperty :: Parser ChatProperty
 p_chatProperty = choice
@@ -147,13 +135,13 @@ p_chatTopic :: Parser ChatTopic
 p_chatTopic = takeText
 
 p_chatMessageID :: Parser ChatMessageID
-p_chatMessageID = decimal
+p_chatMessageID = ChatMessageID <$> decimal
 
 p_chatWindowTitle :: Parser ChatWindowTitle
 p_chatWindowTitle = takeText
 
 p_chatMemberID :: Parser ChatMemberID
-p_chatMemberID = decimal
+p_chatMemberID = ChatMemberID <$> decimal
 
 p_chatPasswordHint :: Parser ChatPasswordHint
 p_chatPasswordHint = takeText
@@ -281,10 +269,24 @@ p_chatMessageLeaveReason = choice
 
 
 
+-- CONNSTATUS  --{{{1
+
+p_connectionStatus :: Parser SkypeResponse
+p_connectionStatus = ConnectionStatus <$> (string "CONNSTATUS" *> spaces *> p_status)
+  where
+    p_status = choice
+      [ ConnectionStatusOffline    <$ string "OFFLINE"
+      , ConnectionStatusConnecting <$ string "CONNECTING"
+      , ConnectionStatusPausing    <$ string "PAUSING"
+      , ConnectionStatusOnline     <$ string "ONLINE" ]
+
+
+
+
 -- ERROR  --{{{1
 
 p_error :: Parser SkypeResponse
-p_error = ErrorResponse <$> (SkypeError <$> p_code <*> (p_description <|> pure ""))
+p_error = ErrorResponse <$> p_code <*> (p_description <|> pure "")
   where
     p_code = string "ERROR" *> spaces *> decimal
 
@@ -293,20 +295,36 @@ p_error = ErrorResponse <$> (SkypeError <$> p_code <*> (p_description <|> pure "
 
 
 
--- Misc.  --{{{1
+-- OK  --{{{1
 
-p_response :: Parser SkypeResponse
-p_response = choice
-  [ p_alterResponse
-  , p_chat
-  , p_chatMessage
-  , p_error
-  ]
+p_ok :: Parser SkypeResponse
+p_ok = OK <$ string "OK"
 
-p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
-p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
+
+
+
+-- PROTOCOL  --{{{1
+
+p_protocol :: Parser SkypeResponse
+p_protocol = Protocol <$> (string "PROTOCOL" *> spaces *> decimal)
+
+
+
+
+-- USER  --{{{1
+
+p_userID :: Parser UserID
+p_userID = UserID <$> (takeWhile1 isSymbol)
   where
-    p_commandID = (word8 _numbersign) *> takeWhile1 (not . isSpace)
+    isSymbol c = any ($ c) [isAlpha, isDigit, (==) _underscore, (==) _hyphen]
+
+p_userHandle :: Parser UserHandle
+p_userHandle = takeText
+
+
+
+
+-- Internal Utilities  --{{{1
 
 p_boolean :: Parser Bool
 p_boolean = (True <$ string "TRUE") <|> (False <$ string "FALSE")

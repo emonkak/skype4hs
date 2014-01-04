@@ -41,7 +41,7 @@ class (Monad m, MonadError SkypeError m) => MonadSkype m where
   -- | Gets the message channel of Skype from the event loop.
   getSkypeChannel :: m SkypeChannel
 
-  -- | Gets the timeout period of an command (milliseconds).
+  -- | Gets the timeout period of a command (milliseconds).
   getTimeout :: m Int
 
 newtype Skype c m a = Skype (ErrorT SkypeError (ReaderT (SkypeEnvironment c) m) a)
@@ -52,13 +52,16 @@ data SkypeEnvironment c = SkypeEnvironment
   , skypeConnection :: c
   }
 
-data SkypeError = SkypeError Int T.Text
-                | SkypeTimeout Command
+data SkypeError = SkypeError
+  { skypeErrorCode :: Int
+  , skypeErrorCommand :: Command
+  , skypeErrorDescription :: T.Text
+  }
   deriving (Eq, Show, Typeable)
 
 instance Error SkypeError where
-  noMsg = SkypeError 0 ""
-  strMsg = SkypeError 0 . fromString
+  noMsg = SkypeError 0 "" ""
+  strMsg = SkypeError 0 "" . fromString
 
 -- | runSkype
 runSkype :: Skype c m a -> SkypeEnvironment c -> m (Either SkypeError a)
