@@ -14,9 +14,9 @@ import qualified Data.Text.Encoding as T
 getTimestamp :: (MonadIO m, MonadSkype m) => ChatMessageID -> m Timestamp
 getTimestamp (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageTimestamp timestamp) -> Just $ Right timestamp
-    ErrorResponse code description                         -> Just $ Left $ SkypeError code command description
-    _                                                      -> Nothing
+    ChatMessage _ (ChatMessageTimestamp timestamp) -> Just $ Right timestamp
+    Error code description                         -> Just $ Left $ SkypeError code command description
+    _                                              -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " TIMESTAMP"
@@ -25,9 +25,9 @@ getTimestamp (ChatMessageID chatMessageID) = executeCommandWithID command $ \res
 getFromHandle :: (MonadIO m, MonadSkype m) => ChatMessageID -> m UserHandle
 getFromHandle (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageFromHandle userHandle) -> Just $ Right userHandle
-    ErrorResponse code description                           -> Just $ Left $ SkypeError code command description
-    _                                                        -> Nothing
+    ChatMessage _ (ChatMessageFromHandle userHandle) -> Just $ Right userHandle
+    Error code description                           -> Just $ Left $ SkypeError code command description
+    _                                                -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " FROM_HANDLE"
@@ -36,9 +36,9 @@ getFromHandle (ChatMessageID chatMessageID) = executeCommandWithID command $ \re
 getFromDisplayName :: (MonadIO m, MonadSkype m) => ChatMessageID -> m UserHandle
 getFromDisplayName (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageFromDisplayName userHandle) -> Just $ Right userHandle
-    ErrorResponse code description                                -> Just $ Left $ SkypeError code command description
-    _                                                             -> Nothing
+    ChatMessage _ (ChatMessageFromDisplayName userHandle) -> Just $ Right userHandle
+    Error code description                                -> Just $ Left $ SkypeError code command description
+    _                                                     -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " FROM_DISPNAME"
@@ -47,9 +47,9 @@ getFromDisplayName (ChatMessageID chatMessageID) = executeCommandWithID command 
 getType :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageType
 getType (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageType messageType) -> Just $ Right messageType
-    ErrorResponse code description                      -> Just $ Left $ SkypeError code command description
-    _                                                   -> Nothing
+    ChatMessage _ (ChatMessageType messageType) -> Just $ Right messageType
+    Error code description                      -> Just $ Left $ SkypeError code command description
+    _                                           -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " TYPE"
 
@@ -57,9 +57,9 @@ getType (ChatMessageID chatMessageID) = executeCommandWithID command $ \response
 getStatus :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageStatus
 getStatus (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageStatus messageStatus) -> Just $ Right messageStatus
-    ErrorResponse code description                          -> Just $ Left $ SkypeError code command description
-    _                                                       -> Nothing
+    ChatMessage _ (ChatMessageStatus messageStatus) -> Just $ Right messageStatus
+    Error code description                          -> Just $ Left $ SkypeError code command description
+    _                                               -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " STATUS"
@@ -68,9 +68,9 @@ getStatus (ChatMessageID chatMessageID) = executeCommandWithID command $ \respon
 getLeaveReason :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageLeaveReason
 getLeaveReason (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageLeaveReason leaveReason) -> Just $ Right leaveReason
-    ErrorResponse code description                             -> Just $ Left $ SkypeError code command description
-    _                                                          -> Nothing
+    ChatMessage _ (ChatMessageLeaveReason leaveReason) -> Just $ Right leaveReason
+    Error code description                             -> Just $ Left $ SkypeError code command description
+    _                                                  -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " LEAVEREASON"
@@ -79,9 +79,9 @@ getLeaveReason (ChatMessageID chatMessageID) = executeCommandWithID command $ \r
 getChatName :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatID
 getChatName (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageChatName chatID) -> Just $ Right chatID
-    ErrorResponse code description                     -> Just $ Left $ SkypeError code command description
-    _                                                  -> Nothing
+    ChatMessage _ (ChatMessageChatName chatID) -> Just $ Right chatID
+    Error code description                     -> Just $ Left $ SkypeError code command description
+    _                                          -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " CHATNAME"
@@ -90,8 +90,8 @@ getChatName (ChatMessageID chatMessageID) = executeCommandWithID command $ \resp
 getBody :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageBody
 getBody (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse _ (ChatMessageBody messageBody) -> Just $ Right messageBody
-    ErrorResponse code description                      -> Just $ Left $ SkypeError code command description
-    _                                                   -> Nothing
+    ChatMessage _ (ChatMessageBody messageBody) -> Just $ Right messageBody
+    Error code description                      -> Just $ Left $ SkypeError code command description
+    _                                           -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " BODY"

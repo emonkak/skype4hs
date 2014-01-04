@@ -14,9 +14,9 @@ import qualified Data.Text.Encoding as T
 setChatTopic :: (MonadIO m, MonadSkype m) => ChatID -> ChatTopic -> m ()
 setChatTopic (ChatID chatID) chatTopic = executeCommandWithID command $ \response ->
   case response of
-    AlterChatSetTopic              -> Just $ Right ()
-    ErrorResponse code description -> Just $ Left $ SkypeError code command description
-    _                              -> Nothing
+    AlterChatSetTopic      -> Just $ Right ()
+    Error code description -> Just $ Left $ SkypeError code command description
+    _                      -> Nothing
   where
     command = "ALTER CHAT " <> chatID
                             <> " SETTOPIC "
@@ -27,9 +27,9 @@ addChatMembers :: (MonadIO m, MonadSkype m) => ChatID -> [UserID] -> m ()
 addChatMembers (ChatID chatID) []      = return ()
 addChatMembers (ChatID chatID) userIDs = executeCommandWithID command $ \response ->
   case response of
-    AlterChatAddMembers            -> Just $ Right ()
-    ErrorResponse code description -> Just $ Left $ SkypeError code command description
-    _                              -> Nothing
+    AlterChatAddMembers    -> Just $ Right ()
+    Error code description -> Just $ Left $ SkypeError code command description
+    _                      -> Nothing
   where
     command = "ALTER CHAT " <> chatID
                             <> " ADDMEMBERS "
@@ -39,9 +39,9 @@ addChatMembers (ChatID chatID) userIDs = executeCommandWithID command $ \respons
 joinChat :: (MonadIO m, MonadSkype m) => ChatID -> m ()
 joinChat (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    AlterChatJoin                  -> Just $ Right ()
-    ErrorResponse code description -> Just $ Left $ SkypeError code command description
-    _                              -> Nothing
+    AlterChatJoin          -> Just $ Right ()
+    Error code description -> Just $ Left $ SkypeError code command description
+    _                      -> Nothing
   where
     command = "ALTER CHAT " <> chatID <> " JOIN"
 
@@ -49,9 +49,9 @@ joinChat (ChatID chatID) = executeCommandWithID command $ \response ->
 leaveChat :: (MonadIO m, MonadSkype m) => ChatID -> m ()
 leaveChat (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    AlterChatLeave                 -> Just $ Right ()
-    ErrorResponse code description -> Just $ Left $ SkypeError code command description
-    _                              -> Nothing
+    AlterChatLeave         -> Just $ Right ()
+    Error code description -> Just $ Left $ SkypeError code command description
+    _                      -> Nothing
   where
     command = "ALTER CHAT " <> chatID <> " LEAVE"
 
@@ -62,9 +62,9 @@ sendChatMessage :: (MonadIO m, MonadSkype m)
                 -> m ChatMessageID
 sendChatMessage (ChatID chatID) messageBody = executeCommandWithID command $ \response ->
   case response of
-    ChatMessageResponse chatMessageID _ -> Just $ Right chatMessageID
-    ErrorResponse code description      -> Just $ Left $ SkypeError code command description
-    _                                   -> Nothing
+    ChatMessage chatMessageID _ -> Just $ Right chatMessageID
+    Error code description      -> Just $ Left $ SkypeError code command description
+    _                           -> Nothing
   where
     command = "CHATMESSAGE " <> chatID <> " " <> T.encodeUtf8 messageBody
 
@@ -72,9 +72,9 @@ sendChatMessage (ChatID chatID) messageBody = executeCommandWithID command $ \re
 getTimestamp :: (MonadIO m, MonadSkype m) => ChatID -> m Timestamp
 getTimestamp (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatTimestamp timestamp) -> Just $ Right timestamp
-    ErrorResponse code description           -> Just $ Left $ SkypeError code command description
-    _                                        -> Nothing
+    Chat _ (ChatTimestamp timestamp) -> Just $ Right timestamp
+    Error code description           -> Just $ Left $ SkypeError code command description
+    _                                -> Nothing
   where
     command = "GET CHAT " <> chatID <> " TIMESTAMP"
 
@@ -82,9 +82,9 @@ getTimestamp (ChatID chatID) = executeCommandWithID command $ \response ->
 getAdder :: (MonadIO m, MonadSkype m) => ChatID -> m UserID
 getAdder (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatAdder adder) -> Just $ Right adder
-    ErrorResponse code description   -> Just $ Left $ SkypeError code command description
-    _                                -> Nothing
+    Chat _ (ChatAdder adder) -> Just $ Right adder
+    Error code description   -> Just $ Left $ SkypeError code command description
+    _                        -> Nothing
   where
     command = "GET CHAT " <> chatID <> " ADDER"
 
@@ -92,9 +92,9 @@ getAdder (ChatID chatID) = executeCommandWithID command $ \response ->
 getStatus :: (MonadIO m, MonadSkype m) => ChatID -> m ChatStatus
 getStatus (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatStatus status) -> Just $ Right status
-    ErrorResponse code description     -> Just $ Left $ SkypeError code command description
-    _                                  -> Nothing
+    Chat _ (ChatStatus status) -> Just $ Right status
+    Error code description     -> Just $ Left $ SkypeError code command description
+    _                          -> Nothing
   where
     command = "GET CHAT " <> chatID <> " STATUS"
 
@@ -102,9 +102,9 @@ getStatus (ChatID chatID) = executeCommandWithID command $ \response ->
 getAllPosters :: (MonadIO m, MonadSkype m) => ChatID -> m [UserID]
 getAllPosters (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatPosters posters) -> Just $ Right posters
-    ErrorResponse code description       -> Just $ Left $ SkypeError code command description
-    _                                    -> Nothing
+    Chat _ (ChatPosters posters) -> Just $ Right posters
+    Error code description       -> Just $ Left $ SkypeError code command description
+    _                            -> Nothing
   where
     command = "GET CHAT " <> chatID <> " POSTERS"
 
@@ -112,9 +112,9 @@ getAllPosters (ChatID chatID) = executeCommandWithID command $ \response ->
 getAllMembers :: (MonadIO m, MonadSkype m) => ChatID -> m [UserID]
 getAllMembers (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatMembers members) -> Just $ Right members
-    ErrorResponse code description       -> Just $ Left $ SkypeError code command description
-    _                                    -> Nothing
+    Chat _ (ChatMembers members) -> Just $ Right members
+    Error code description       -> Just $ Left $ SkypeError code command description
+    _                            -> Nothing
   where
     command = "GET CHAT " <> chatID <> " MEMBERS"
 
@@ -122,9 +122,9 @@ getAllMembers (ChatID chatID) = executeCommandWithID command $ \response ->
 getTopic :: (MonadIO m, MonadSkype m) => ChatID -> m ChatTopic
 getTopic (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatTopic topic) -> Just $ Right topic
-    ErrorResponse code description   -> Just $ Left $ SkypeError code command description
-    _                                -> Nothing
+    Chat _ (ChatTopic topic) -> Just $ Right topic
+    Error code description   -> Just $ Left $ SkypeError code command description
+    _                        -> Nothing
   where
     command = "GET CHAT " <> chatID <> " TOPIC"
 
@@ -132,9 +132,9 @@ getTopic (ChatID chatID) = executeCommandWithID command $ \response ->
 getActiveMembers :: (MonadIO m, MonadSkype m) => ChatID -> m [UserID]
 getActiveMembers (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatActiveMembers members) -> Just $ Right members
-    ErrorResponse code description             -> Just $ Left $ SkypeError code command description
-    _                                          -> Nothing
+    Chat _ (ChatActiveMembers members) -> Just $ Right members
+    Error code description             -> Just $ Left $ SkypeError code command description
+    _                                  -> Nothing
   where
     command = "GET CHAT " <> chatID <> " ACTIVEMEMBERS"
 
@@ -142,9 +142,9 @@ getActiveMembers (ChatID chatID) = executeCommandWithID command $ \response ->
 getWindowTitle :: (MonadIO m, MonadSkype m) => ChatID -> m ChatWindowTitle
 getWindowTitle (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatFriendyName name) -> Just $ Right name
-    ErrorResponse code description        -> Just $ Left $ SkypeError code command description
-    _                                     -> Nothing
+    Chat _ (ChatFriendyName name) -> Just $ Right name
+    Error code description        -> Just $ Left $ SkypeError code command description
+    _                             -> Nothing
   where
     command = "GET CHAT " <> chatID <> " FRIENDLYNAME"
 
@@ -152,9 +152,9 @@ getWindowTitle (ChatID chatID) = executeCommandWithID command $ \response ->
 getAllMessages :: (MonadIO m, MonadSkype m) => ChatID -> m [ChatMessageID]
 getAllMessages (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatMessages chatMessageIDs) -> Just $ Right chatMessageIDs
-    ErrorResponse code description               -> Just $ Left $ SkypeError code command description
-    _                                            -> Nothing
+    Chat _ (ChatMessages chatMessageIDs) -> Just $ Right chatMessageIDs
+    Error code description               -> Just $ Left $ SkypeError code command description
+    _                                    -> Nothing
   where
     command = "GET CHAT " <> chatID <> " CHATMESSAGES"
 
@@ -162,9 +162,9 @@ getAllMessages (ChatID chatID) = executeCommandWithID command $ \response ->
 getRecentMessages :: (MonadIO m, MonadSkype m) => ChatID -> m [ChatMessageID]
 getRecentMessages (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatRecentMessages chatMessageIDs) -> Just $ Right chatMessageIDs
-    ErrorResponse code description                     -> Just $ Left $ SkypeError code command description
-    _                                                  -> Nothing
+    Chat _ (ChatRecentMessages chatMessageIDs) -> Just $ Right chatMessageIDs
+    Error code description                     -> Just $ Left $ SkypeError code command description
+    _                                          -> Nothing
   where
     command = "GET CHAT " <> chatID <> " RECENTCHATMESSAGES"
 
@@ -172,8 +172,8 @@ getRecentMessages (ChatID chatID) = executeCommandWithID command $ \response ->
 isBookmarked :: (MonadIO m, MonadSkype m) => ChatID -> m Bool
 isBookmarked (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
-    ChatResponse _ (ChatBookmarked pred) -> Just $ Right pred
-    ErrorResponse code description       -> Just $ Left $ SkypeError code command description
-    _                                    -> Nothing
+    Chat _ (ChatBookmarked pred) -> Just $ Right pred
+    Error code description       -> Just $ Left $ SkypeError code command description
+    _                            -> Nothing
   where
     command = "GET CHAT " <> chatID <> " BOOKMARKED"

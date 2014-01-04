@@ -79,7 +79,7 @@ p_alter = string "ALTER" *> spaces *> choice
 p_chat :: Parser SkypeResponse
 p_chat = string "CHAT"
       *> spaces
-      *> (ChatResponse <$> (p_chatID <* spaces) <*> p_chatProperty)
+      *> (Chat <$> (p_chatID <* spaces) <*> p_chatProperty)
 
 p_chatID :: Parser ChatID
 p_chatID = ChatID <$> (takeWhile1 $ not . isSpace)
@@ -201,7 +201,7 @@ p_chatBlob = takeByteString
 p_chatMessage :: Parser SkypeResponse
 p_chatMessage = string "CHATMESSAGE"
       *> spaces
-      *> (ChatMessageResponse <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)
+      *> (ChatMessage <$> (p_chatMessageID <* spaces) <*> p_chatMessageProperty)
 
 p_chatMessageProperty :: Parser ChatMessageProperty
 p_chatMessageProperty = choice
@@ -286,7 +286,7 @@ p_connectionStatus = ConnectionStatus <$> (string "CONNSTATUS" *> spaces *> p_st
 -- ERROR  --{{{1
 
 p_error :: Parser SkypeResponse
-p_error = ErrorResponse <$> p_code <*> (p_description <|> pure "")
+p_error = Error <$> p_code <*> (p_description <|> pure "")
   where
     p_code = string "ERROR" *> spaces *> decimal
 

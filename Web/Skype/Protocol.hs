@@ -28,10 +28,10 @@ data SkypeResponse
   | AlterChatSetPassword
   | AlterChatEnterPassword
   | AlterChatSetOptions
-  | ChatResponse ChatID ChatProperty
-  | ChatMessageResponse ChatMessageID ChatMessageProperty
+  | Chat ChatID ChatProperty
+  | ChatMessage ChatMessageID ChatMessageProperty
   | ConnectionStatus ConnectionStatus
-  | ErrorResponse ErrorCode ErrorDescription
+  | Error ErrorCode ErrorDescription
   | OK
   | Protocol ProtocolVersion
   deriving (Eq, Show)

@@ -20,7 +20,7 @@ attachX11 client = executeCommand command $ \response ->
   case response of
     OK                                       -> Just $ Right ()
     ConnectionStatus ConnectionStatusOffline -> Just $ Left $ strMsg "Skype is offline"
-    ErrorResponse code description           -> Just $ Left $ SkypeError code command description
+    Error code description                   -> Just $ Left $ SkypeError code command description
     _                                        -> Nothing
   where
     command = "NAME " <> client
