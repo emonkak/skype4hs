@@ -39,6 +39,7 @@ p_response = choice
   , p_connectionStatus
   , p_error
   , p_ok
+  , p_open
   , p_protocol
   ]
 
@@ -57,18 +58,18 @@ p_alter = string "ALTER" *> spaces *> choice
   [ p_chat ]
   where
     p_chat = string "CHAT" *> spaces *> choice
-      [ AlterChatSetTopic            <$  (string "SETTOPIC")
+      [ AlterChatAcceptAdd           <$  (string "ACCEPTADD")
       , AlterChatAddMembers          <$  (string "ADDMEMBERS")
-      , AlterChatJoin                <$  (string "JOIN")
-      , AlterChatLeave               <$  (string "LEAVE")
       , AlterChatBookmarked          <$> (string "BOOKMARKED" *> p_boolean)
       , AlterChatClearRecentMessages <$  (string "CLEARRECENTMESSAGES")
-      , AlterChatSetAlertString      <$  (string "SETALERTSTRING")
-      , AlterChatAcceptAdd           <$  (string "ACCEPTADD")
       , AlterChatDisband             <$  (string "DISBAND")
-      , AlterChatSetPassword         <$  (string "SETPASSWORD")
       , AlterChatEnterPassword       <$  (string "ENTERPASSWORD")
+      , AlterChatJoin                <$  (string "JOIN")
+      , AlterChatLeave               <$  (string "LEAVE")
+      , AlterChatSetAlertString      <$  (string "SETALERTSTRING")
       , AlterChatSetOptions          <$  (string "SETOPTIONS")
+      , AlterChatSetPassword         <$  (string "SETPASSWORD")
+      , AlterChatSetTopic            <$  (string "SETTOPIC")
       ]
 
 
@@ -299,6 +300,17 @@ p_error = Error <$> p_code <*> (p_description <|> pure "")
 
 p_ok :: Parser SkypeResponse
 p_ok = OK <$ string "OK"
+
+
+
+
+-- OPEN  --{{{1
+
+p_open :: Parser SkypeResponse
+p_open = string "OPEN" *> spaces *> choice
+  [ p_chat ]
+  where
+    p_chat = OpenChat <$> (string "CHAT" *> spaces *> p_chatID)
 
 
 

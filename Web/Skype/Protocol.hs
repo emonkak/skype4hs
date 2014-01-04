@@ -16,23 +16,24 @@ import Web.Skype.Protocol.Types
 import Web.Skype.Protocol.User
 
 data SkypeResponse
-  = AlterChatSetTopic
+  = AlterChatAcceptAdd
   | AlterChatAddMembers
-  | AlterChatJoin
-  | AlterChatLeave
   | AlterChatBookmarked Bool
   | AlterChatClearRecentMessages
-  | AlterChatSetAlertString
-  | AlterChatAcceptAdd
   | AlterChatDisband
-  | AlterChatSetPassword
   | AlterChatEnterPassword
+  | AlterChatJoin
+  | AlterChatLeave
+  | AlterChatSetAlertString
   | AlterChatSetOptions
+  | AlterChatSetPassword
+  | AlterChatSetTopic
   | Chat ChatID ChatProperty
   | ChatMessage ChatMessageID ChatMessageProperty
   | ConnectionStatus ConnectionStatus
   | Error ErrorCode ErrorDescription
   | OK
+  | OpenChat ChatID
   | Protocol ProtocolVersion
   deriving (Eq, Show)
 

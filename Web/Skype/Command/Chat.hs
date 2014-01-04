@@ -11,8 +11,8 @@ import qualified Data.ByteString.Char8 as BC
 import qualified Data.Text.Encoding as T
 
 -- | Changes a chat topic.
-setChatTopic :: (MonadIO m, MonadSkype m) => ChatID -> ChatTopic -> m ()
-setChatTopic (ChatID chatID) chatTopic = executeCommandWithID command $ \response ->
+setTopic :: (MonadIO m, MonadSkype m) => ChatID -> ChatTopic -> m ()
+setTopic (ChatID chatID) chatTopic = executeCommandWithID command $ \response ->
   case response of
     AlterChatSetTopic      -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -23,9 +23,9 @@ setChatTopic (ChatID chatID) chatTopic = executeCommandWithID command $ \respons
                             <> T.encodeUtf8 chatTopic
 
 -- | Adds new members to a chat.
-addChatMembers :: (MonadIO m, MonadSkype m) => ChatID -> [UserID] -> m ()
-addChatMembers (ChatID chatID) []      = return ()
-addChatMembers (ChatID chatID) userIDs = executeCommandWithID command $ \response ->
+addMembers :: (MonadIO m, MonadSkype m) => ChatID -> [UserID] -> m ()
+addMembers _ [] = return ()
+addMembers (ChatID chatID) userIDs = executeCommandWithID command $ \response ->
   case response of
     AlterChatAddMembers    -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -36,8 +36,8 @@ addChatMembers (ChatID chatID) userIDs = executeCommandWithID command $ \respons
                             <> BC.intercalate ", " (map getUserID userIDs)
 
 -- | Joins to a chat.
-joinChat :: (MonadIO m, MonadSkype m) => ChatID -> m ()
-joinChat (ChatID chatID) = executeCommandWithID command $ \response ->
+join :: (MonadIO m, MonadSkype m) => ChatID -> m ()
+join (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
     AlterChatJoin          -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -46,8 +46,8 @@ joinChat (ChatID chatID) = executeCommandWithID command $ \response ->
     command = "ALTER CHAT " <> chatID <> " JOIN"
 
 -- | Leaves to a chat.
-leaveChat :: (MonadIO m, MonadSkype m) => ChatID -> m ()
-leaveChat (ChatID chatID) = executeCommandWithID command $ \response ->
+leave :: (MonadIO m, MonadSkype m) => ChatID -> m ()
+leave (ChatID chatID) = executeCommandWithID command $ \response ->
   case response of
     AlterChatLeave         -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -56,11 +56,11 @@ leaveChat (ChatID chatID) = executeCommandWithID command $ \response ->
     command = "ALTER CHAT " <> chatID <> " LEAVE"
 
 -- | Sends a message to this chat.
-sendChatMessage :: (MonadIO m, MonadSkype m)
-                => ChatID
-                -> ChatMessageBody
-                -> m ChatMessageID
-sendChatMessage (ChatID chatID) messageBody = executeCommandWithID command $ \response ->
+sendMessage :: (MonadIO m, MonadSkype m)
+            => ChatID
+            -> ChatMessageBody
+            -> m ChatMessageID
+sendMessage (ChatID chatID) messageBody = executeCommandWithID command $ \response ->
   case response of
     ChatMessage chatMessageID _ -> Just $ Right chatMessageID
     Error code description      -> Just $ Left $ SkypeError code command description
@@ -177,3 +177,23 @@ isBookmarked (ChatID chatID) = executeCommandWithID command $ \response ->
     _                            -> Nothing
   where
     command = "GET CHAT " <> chatID <> " BOOKMARKED"
+
+-- | Create a chat.
+create :: (MonadIO m, MonadSkype m) => [UserID] -> m (ChatID, ChatStatus)
+create userIDs = executeCommandWithID command $ \response ->
+  case response of
+    Chat chatID (ChatStatus status) -> Just $ Right (chatID, status)
+    Error code description          -> Just $ Left $ SkypeError code command description
+    _                               -> Nothing
+  where
+    command = "CAHT CREATE " <> BC.intercalate ", " (map getUserID userIDs)
+
+-- | Open a chat window.
+open :: (MonadIO m, MonadSkype m) => ChatID -> m ()
+open (ChatID chatID) = executeCommandWithID command $ \response ->
+  case response of
+    OpenChat chatID        -> Just $ Right ()
+    Error code description -> Just $ Left $ SkypeError code command description
+    _                      -> Nothing
+  where
+    command = "OPEN CHAT " <> chatID
