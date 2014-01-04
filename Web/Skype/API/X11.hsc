@@ -1,5 +1,5 @@
 module Web.Skype.API.X11 (
-  SkypeX11Connection,
+  SkypeConnection,
   connect,
   connectTo,
   disconnect
@@ -37,7 +37,7 @@ import qualified Data.ByteString.Unsafe as BS
 import qualified Graphics.X11.Xlib as X
 import qualified Graphics.X11.Xlib.Extras as X
 
-data SkypeX11Connection = SkypeX11Connection
+data SkypeConnection = SkypeConnection
   { skypeApi :: SkypeAPI
   , skypeChannel :: SkypeChannel
   , skypeThread :: ThreadId
@@ -52,7 +52,7 @@ data SkypeAPI = SkypeAPI
   }
   deriving (Show, Eq)
 
-instance MonadIO m => MonadSkype (Skype SkypeX11Connection m) where
+instance MonadIO m => MonadSkype (Skype SkypeConnection m) where
   attach = attachX11 . BC.pack =<< liftIO getProgName
 
   sendCommand command = Skype $ asks (skypeApi . skypeConnection) >>=
@@ -110,26 +110,26 @@ getSkypeInstanceWindow display root = do
 
 -- | connect
 connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-        => m SkypeX11Connection
+        => m SkypeConnection
 connect = connectTo =<< getDisplayAddress
 
 -- | connectTo
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
           => String
-          -> m SkypeX11Connection
+          -> m SkypeConnection
 connectTo address = do
   api <- createApi address
   chan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $ runEventLoop api $ atomically . writeTChan chan
 
-  return SkypeX11Connection
+  return SkypeConnection
     { skypeApi = api
     , skypeChannel = chan
     , skypeThread = thread
     }
 
 -- | disconnect
-disconnect :: SkypeX11Connection -> IO ()
+disconnect :: SkypeConnection -> IO ()
 disconnect connection = do
   killThread $ skypeThread connection
 
