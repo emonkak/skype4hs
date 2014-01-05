@@ -7,7 +7,9 @@ import Control.Applicative
 import Data.Attoparsec.ByteString.Char8 (decimal)
 import Data.Attoparsec.ByteString.Lazy
 import Data.Attoparsec.Combinator
+import Data.Char (chr)
 import Data.Maybe (fromMaybe)
+import Data.Time.Calendar (fromGregorian)
 import Data.Word8
 import Foreign.C.Types (CTime(..))
 import Web.Skype.Core
@@ -18,22 +20,16 @@ import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
--- Public API  --{{{1
-
 parseResponse :: BL.ByteString -> Maybe SkypeResponse
 parseResponse = maybeResult . parse p_response
 
 parseResponseWithCommandID :: BL.ByteString -> Maybe (CommandID, SkypeResponse)
 parseResponseWithCommandID = maybeResult . parse p_responseWithCommandID
 
-
-
-
--- Main  --{{{1
-
 p_response :: Parser SkypeResponse
 p_response = choice
   [ p_alter
+  , p_chats
   , p_chat
   , p_chatMessage
   , p_connectionStatus
@@ -41,6 +37,7 @@ p_response = choice
   , p_ok
   , p_open
   , p_protocol
+  , p_user
   ]
 
 p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
@@ -48,10 +45,8 @@ p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
   where
     p_commandID = word8 _numbersign *> takeWhile1 (not . isSpace)
 
-
-
-
--- ALTER  --{{{1
+-- ALTER
+--------
 
 p_alter :: Parser SkypeResponse
 p_alter = string "ALTER" *> spaces *> choice
@@ -72,10 +67,8 @@ p_alter = string "ALTER" *> spaces *> choice
       , AlterChatSetTopic            <$  (string "SETTOPIC")
       ]
 
-
-
-
--- CHAT  --{{{1
+-- CHAT
+-------
 
 p_chat :: Parser SkypeResponse
 p_chat = string "CHAT"
@@ -83,7 +76,7 @@ p_chat = string "CHAT"
       *> (Chat <$> (p_chatID <* spaces) <*> p_chatProperty)
 
 p_chatID :: Parser ChatID
-p_chatID = ChatID <$> (takeWhile1 $ not . isSpace)
+p_chatID = takeWhile1 $ not . isSpace
 
 p_chatProperty :: Parser ChatProperty
 p_chatProperty = choice
@@ -136,13 +129,13 @@ p_chatTopic :: Parser ChatTopic
 p_chatTopic = takeText
 
 p_chatMessageID :: Parser ChatMessageID
-p_chatMessageID = ChatMessageID <$> decimal
+p_chatMessageID = decimal
 
 p_chatWindowTitle :: Parser ChatWindowTitle
 p_chatWindowTitle = takeText
 
 p_chatMemberID :: Parser ChatMemberID
-p_chatMemberID = ChatMemberID <$> decimal
+p_chatMemberID = decimal
 
 p_chatPasswordHint :: Parser ChatPasswordHint
 p_chatPasswordHint = takeText
@@ -194,10 +187,16 @@ p_chatRole = choice
 p_chatBlob :: Parser ChatBlob
 p_chatBlob = takeByteString
 
+-- CHATS
+--------
 
+p_chats :: Parser SkypeResponse
+p_chats = Chats <$> (string "CHATS" *> spaces *> p_chatIDs)
+  where
+    p_chatIDs = p_chatID `sepBy` (word8 _comma *> spaces)
 
-
--- CHATMESSAGE  --{{{1
+-- CHATMESSAGE
+--------------
 
 p_chatMessage :: Parser SkypeResponse
 p_chatMessage = string "CHATMESSAGE"
@@ -207,8 +206,8 @@ p_chatMessage = string "CHATMESSAGE"
 p_chatMessageProperty :: Parser ChatMessageProperty
 p_chatMessageProperty = choice
   [ ChatMessageTimestamp       <$> (property "TIMESTAMP" *> p_timestamp)
-  , ChatMessageFromHandle      <$> (property "FROM_HANDLE" *> p_userHandle)
-  , ChatMessageFromDisplayName <$> (property "FROM_DISPNAME" *> p_userHandle)
+  , ChatMessageFromHandle      <$> (property "FROM_HANDLE" *> p_userID)
+  , ChatMessageFromDisplayName <$> (property "FROM_DISPNAME" *> p_userDisplayName)
   , ChatMessageType            <$> (property "TYPE" *> p_chatMessageType)
   , ChatMessageStatus          <$> (property "STATUS" *> p_chatMessageStatus)
   , ChatMessageLeaveReason     <$> (property "LEAVEREASON" *> p_chatMessageLeaveReason)
@@ -267,10 +266,8 @@ p_chatMessageLeaveReason = choice
   , ChatMessageLeaveReasonUnsubscribe           <$ string "UNSUBSCRIBE"
   ]
 
-
-
-
--- CONNSTATUS  --{{{1
+-- CONNSTATUS
+-------------
 
 p_connectionStatus :: Parser SkypeResponse
 p_connectionStatus = ConnectionStatus <$> (string "CONNSTATUS" *> spaces *> p_status)
@@ -281,10 +278,8 @@ p_connectionStatus = ConnectionStatus <$> (string "CONNSTATUS" *> spaces *> p_st
       , ConnectionStatusPausing    <$ string "PAUSING"
       , ConnectionStatusOnline     <$ string "ONLINE" ]
 
-
-
-
--- ERROR  --{{{1
+-- ERROR
+--------
 
 p_error :: Parser SkypeResponse
 p_error = Error <$> p_code <*> (p_description <|> pure "")
@@ -293,18 +288,14 @@ p_error = Error <$> p_code <*> (p_description <|> pure "")
 
     p_description = spaces *> (T.decodeUtf8 <$> takeByteString)
 
-
-
-
--- OK  --{{{1
+-- OK
+-----
 
 p_ok :: Parser SkypeResponse
 p_ok = OK <$ string "OK"
 
-
-
-
--- OPEN  --{{{1
+-- OPEN
+-------
 
 p_open :: Parser SkypeResponse
 p_open = string "OPEN" *> spaces *> choice
@@ -312,31 +303,139 @@ p_open = string "OPEN" *> spaces *> choice
   where
     p_chat = OpenChat <$> (string "CHAT" *> spaces *> p_chatID)
 
-
-
-
--- PROTOCOL  --{{{1
+-- PROTOCOL
+-----------
 
 p_protocol :: Parser SkypeResponse
 p_protocol = Protocol <$> (string "PROTOCOL" *> spaces *> decimal)
 
+-- USER
+-------
 
-
-
--- USER  --{{{1
+p_user :: Parser SkypeResponse
+p_user = User <$> (string "USER" *> spaces *> p_userID <* spaces)
+              <*> p_userProperty
 
 p_userID :: Parser UserID
-p_userID = UserID <$> (takeWhile1 isSymbol)
+p_userID = takeWhile1 isSymbol
   where
     isSymbol c = any ($ c) [isAlpha, isDigit, (==) _underscore, (==) _hyphen]
 
-p_userHandle :: Parser UserHandle
-p_userHandle = takeText
+p_userProperty :: Parser UserProperty
+p_userProperty = choice
+  [ UserHandle                 <$> (property "HANDLE" *> p_userID)
+  , UserFullName               <$> (property "FULLNAME" *> p_userFullName)
+  , UserBirthday               <$> (property "BIRTHDAY" *> p_userBirthday)
+  , UserSex                    <$> (property "SEX" *> p_userSex)
+  , UserLanguage               <$> (property "LANGUAGE" *> p_userLanguage)
+  , UserCountry                <$> (property "COUNTRY" *> p_userCountry)
+  , UserProvince               <$> (property "PROVINCE" *> p_userProvince)
+  , UserCity                   <$> (property "CITY" *> p_userCity)
+  , UserPhoneHome              <$> (property "PHONE_HOME" *> p_userPhone)
+  , UserPhoneOffice            <$> (property "PHONE_OFFICE" *> p_userPhone)
+  , UserPhoneMobile            <$> (property "PHONE_MOBILE" *> p_userPhone)
+  , UserHomepage               <$> (property "HOMEPAGE" *> p_userHomepage)
+  , UserAbout                  <$> (property "ABOUT" *> p_userAbout)
+  , UserHasCallEquipment       <$> (property "HASCALLEQUIPMENT" *> p_boolean)
+  , UserIsVideoCapable         <$> (property "IS_VIDEO_CAPABLE" *> p_boolean)
+  , UserIsVoicemailCapable     <$> (property "IS_VOICEMAIL_CAPABLE" *> p_boolean)
+  , UserBuddyStatus            <$> (property "BUDDYSTATUS" *> p_userBuddyStatus)
+  , UserIsAuthorized           <$> (property "ISAUTHORIZED" *> p_boolean)
+  , UserIsBlocked              <$> (property "ISBLOCKED" *> p_boolean)
+  , UserOnlineStatus           <$> (property "ONLINESTATUS" *> p_userOnlineStatus)
+  , UserLastOnlineTimestamp    <$> (property "LASTONLINETIMESTAMP" *> p_timestamp)
+  , UserCanLeaveVoiceMail      <$> (property "CAN_LEAVE_VM" *> p_boolean)
+  , UserSpeedDial              <$> (property "SPEEDDIAL" *> p_userSpeedDial)
+  , UserReceiveAuthRequest     <$> (property "RECEIVEDAUTHREQUEST" *> p_userAuthRequestMessage)
+  , UserMoodText               <$> (property "MOOD_TEXT" *> p_userMoodText)
+  , UserRichMoodText           <$> (property "RICH_MOOD_TEXT" *> p_userRichMoodText)
+  , UserTimezone               <$> (property "TIMEZONE" *> p_userTimezoneOffset)
+  , UserIsCallForwardingActive <$> (property "IS_CF_ACTIVE" *> p_boolean)
+  , UserNumberOfAuthedBuddies  <$> (property "NROF_AUTHED_BUDDIES" *> decimal)
+  , UserDisplayName            <$> (property "DISPLAYNAME" *> p_userDisplayName)
+  ]
+  where
+    property prop = string prop *> spaces
 
+p_userFullName :: Parser UserDisplayName
+p_userFullName = takeText
 
+p_userBirthday :: Parser (Maybe UserBirthday)
+p_userBirthday = Just <$> (fromGregorian <$> digit 4 <*> digit 2 <*> digit 2)
+             <|> Nothing <$ (word8 _0 *> endOfInput)
+  where
+    digit n = read . map (chr . fromIntegral) <$> count n (satisfy isDigit)
 
+p_userSex :: Parser UserSex
+p_userSex = choice
+  [ UserSexUnknown <$ string "UNKNOWN"
+  , UserSexMale    <$ string "MALE"
+  , UserSexFemale  <$ string "FEMALE"
+  ]
 
--- Internal Utilities  --{{{1
+p_userLanguage :: Parser (UserLanguagePrefix, UserLanguage)
+p_userLanguage = (,) <$> (tokens <* spaces) <*> tokens
+  where
+    tokens = T.decodeUtf8 <$> takeWhile1 isAlpha
+
+p_userCountry :: Parser (UserCountryPrefix, UserCountry)
+p_userCountry = (,) <$> (tokens <* spaces) <*> tokens
+  where
+    tokens = T.decodeUtf8 <$> takeWhile1 isAlpha
+
+p_userProvince :: Parser UserProvince
+p_userProvince = takeText
+
+p_userCity :: Parser UserCity
+p_userCity = takeText
+
+p_userPhone :: Parser UserPhone
+p_userPhone = takeText
+
+p_userHomepage :: Parser UserHomepage
+p_userHomepage = takeText
+
+p_userAbout :: Parser UserAbout
+p_userAbout = takeText
+
+p_userBuddyStatus :: Parser UserBuddyStatus
+p_userBuddyStatus = choice
+  [ UserBuddyStatusNeverBeen <$ word8 _0
+  , UserBuddyStatusDeleted   <$ word8 _1
+  , UserBuddyStatusPending   <$ word8 _2
+  , UserBuddyStatusAdded     <$ word8 _3
+  ]
+
+p_userOnlineStatus :: Parser UserOnlineStatus
+p_userOnlineStatus = choice
+  [ UserOnlineStatusUnknown      <$ string "UNKNOWN"
+  , UserOnlineStatusOffline      <$ string "OFFLINE"
+  , UserOnlineStatusOnline       <$ string "ONLINE"
+  , UserOnlineStatusAway         <$ string "AWAY"
+  , UserOnlineStatusNotAvailable <$ string "NA"
+  , UserOnlineStatusDoNotDisturb <$ string "DND"
+  ]
+
+p_userSpeedDial :: Parser UserSpeedDial
+p_userSpeedDial = takeText
+
+p_userAuthRequestMessage :: Parser UserAuthRequestMessage
+p_userAuthRequestMessage = takeText
+
+p_userMoodText :: Parser UserMoodText
+p_userMoodText = takeText
+
+p_userRichMoodText :: Parser UserRichMoodText
+p_userRichMoodText = takeText
+
+p_userTimezoneOffset :: Parser UserTimezoneOffset
+p_userTimezoneOffset = CTime <$> decimal
+
+p_userDisplayName :: Parser UserDisplayName
+p_userDisplayName = takeText
+
+-- Internal Utilities
+---------------------
 
 p_boolean :: Parser Bool
 p_boolean = (True <$ string "TRUE") <|> (False <$ string "FALSE")

@@ -29,12 +29,14 @@ data SkypeResponse
   | AlterChatSetPassword
   | AlterChatSetTopic
   | Chat ChatID ChatProperty
+  | Chats [ChatID]
   | ChatMessage ChatMessageID ChatMessageProperty
   | ConnectionStatus ConnectionStatus
   | Error ErrorCode ErrorDescription
   | OK
   | OpenChat ChatID
   | Protocol ProtocolVersion
+  | User UserID UserProperty
   deriving (Eq, Show)
 
 data ConnectionStatus = ConnectionStatusOffline

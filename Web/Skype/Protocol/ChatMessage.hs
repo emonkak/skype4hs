@@ -8,7 +8,7 @@ data ChatMessageProperty
   = ChatMessageTimestamp Timestamp
 
   -- | Skypename of the originator of the chatmessage.
-  | ChatMessageFromHandle UserHandle
+  | ChatMessageFromHandle UserID
 
   -- | Displayed name of the originator of the chatmessage.
   | ChatMessageFromDisplayName UserDisplayName

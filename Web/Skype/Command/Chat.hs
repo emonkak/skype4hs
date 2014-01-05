@@ -1,4 +1,28 @@
-module Web.Skype.Command.Chat where
+module Web.Skype.Command.Chat (
+  setTopic,
+  addMembers,
+  joinChat,
+  leaveChat,
+  sendMessage,
+  getTimestamp,
+  getAdder,
+  getStatus,
+  getAllPosters,
+  getAllMembers,
+  getTopic,
+  getActiveMembers,
+  getWindowTitle,
+  getAllMessages,
+  getRecentMessages,
+  isBookmarked,
+  createChat,
+  openChat,
+  searchAllChats,
+  searchActiveChats,
+  searchMissedChats,
+  searchRecentChats
+)
+where
 
 import Control.Monad.Trans (MonadIO)
 import Data.Monoid ((<>))
@@ -12,7 +36,7 @@ import qualified Data.Text.Encoding as T
 
 -- | Changes a chat topic.
 setTopic :: (MonadIO m, MonadSkype m) => ChatID -> ChatTopic -> m ()
-setTopic (ChatID chatID) chatTopic = executeCommandWithID command $ \response ->
+setTopic chatID chatTopic = executeCommandWithID command $ \response ->
   case response of
     AlterChatSetTopic      -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -25,7 +49,7 @@ setTopic (ChatID chatID) chatTopic = executeCommandWithID command $ \response ->
 -- | Adds new members to a chat.
 addMembers :: (MonadIO m, MonadSkype m) => ChatID -> [UserID] -> m ()
 addMembers _ [] = return ()
-addMembers (ChatID chatID) userIDs = executeCommandWithID command $ \response ->
+addMembers chatID userIDs = executeCommandWithID command $ \response ->
   case response of
     AlterChatAddMembers    -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -33,11 +57,11 @@ addMembers (ChatID chatID) userIDs = executeCommandWithID command $ \response ->
   where
     command = "ALTER CHAT " <> chatID
                             <> " ADDMEMBERS "
-                            <> BC.intercalate ", " (map getUserID userIDs)
+                            <> BC.intercalate ", " userIDs
 
 -- | Joins to a chat.
-join :: (MonadIO m, MonadSkype m) => ChatID -> m ()
-join (ChatID chatID) = executeCommandWithID command $ \response ->
+joinChat :: (MonadIO m, MonadSkype m) => ChatID -> m ()
+joinChat chatID = executeCommandWithID command $ \response ->
   case response of
     AlterChatJoin          -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -46,8 +70,8 @@ join (ChatID chatID) = executeCommandWithID command $ \response ->
     command = "ALTER CHAT " <> chatID <> " JOIN"
 
 -- | Leaves to a chat.
-leave :: (MonadIO m, MonadSkype m) => ChatID -> m ()
-leave (ChatID chatID) = executeCommandWithID command $ \response ->
+leaveChat :: (MonadIO m, MonadSkype m) => ChatID -> m ()
+leaveChat chatID = executeCommandWithID command $ \response ->
   case response of
     AlterChatLeave         -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
@@ -60,7 +84,7 @@ sendMessage :: (MonadIO m, MonadSkype m)
             => ChatID
             -> ChatMessageBody
             -> m ChatMessageID
-sendMessage (ChatID chatID) messageBody = executeCommandWithID command $ \response ->
+sendMessage chatID messageBody = executeCommandWithID command $ \response ->
   case response of
     ChatMessage chatMessageID _ -> Just $ Right chatMessageID
     Error code description      -> Just $ Left $ SkypeError code command description
@@ -70,7 +94,7 @@ sendMessage (ChatID chatID) messageBody = executeCommandWithID command $ \respon
 
 -- | Returns the timestamp of this chat.
 getTimestamp :: (MonadIO m, MonadSkype m) => ChatID -> m Timestamp
-getTimestamp (ChatID chatID) = executeCommandWithID command $ \response ->
+getTimestamp chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatTimestamp timestamp) -> Just $ Right timestamp
     Error code description           -> Just $ Left $ SkypeError code command description
@@ -80,7 +104,7 @@ getTimestamp (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns the user who added the current user to chat.
 getAdder :: (MonadIO m, MonadSkype m) => ChatID -> m UserID
-getAdder (ChatID chatID) = executeCommandWithID command $ \response ->
+getAdder chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatAdder adder) -> Just $ Right adder
     Error code description   -> Just $ Left $ SkypeError code command description
@@ -90,7 +114,7 @@ getAdder (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns the chat status.
 getStatus :: (MonadIO m, MonadSkype m) => ChatID -> m ChatStatus
-getStatus (ChatID chatID) = executeCommandWithID command $ \response ->
+getStatus chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatStatus status) -> Just $ Right status
     Error code description     -> Just $ Left $ SkypeError code command description
@@ -100,7 +124,7 @@ getStatus (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns the name shown in chat window title.
 getAllPosters :: (MonadIO m, MonadSkype m) => ChatID -> m [UserID]
-getAllPosters (ChatID chatID) = executeCommandWithID command $ \response ->
+getAllPosters chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatPosters posters) -> Just $ Right posters
     Error code description       -> Just $ Left $ SkypeError code command description
@@ -110,7 +134,7 @@ getAllPosters (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns all users who have been there.
 getAllMembers :: (MonadIO m, MonadSkype m) => ChatID -> m [UserID]
-getAllMembers (ChatID chatID) = executeCommandWithID command $ \response ->
+getAllMembers chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatMembers members) -> Just $ Right members
     Error code description       -> Just $ Left $ SkypeError code command description
@@ -120,7 +144,7 @@ getAllMembers (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns the chat topic.
 getTopic :: (MonadIO m, MonadSkype m) => ChatID -> m ChatTopic
-getTopic (ChatID chatID) = executeCommandWithID command $ \response ->
+getTopic chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatTopic topic) -> Just $ Right topic
     Error code description   -> Just $ Left $ SkypeError code command description
@@ -130,7 +154,7 @@ getTopic (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns the members who have stayed in chat.
 getActiveMembers :: (MonadIO m, MonadSkype m) => ChatID -> m [UserID]
-getActiveMembers (ChatID chatID) = executeCommandWithID command $ \response ->
+getActiveMembers chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatActiveMembers members) -> Just $ Right members
     Error code description             -> Just $ Left $ SkypeError code command description
@@ -140,7 +164,7 @@ getActiveMembers (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns the chat window title.
 getWindowTitle :: (MonadIO m, MonadSkype m) => ChatID -> m ChatWindowTitle
-getWindowTitle (ChatID chatID) = executeCommandWithID command $ \response ->
+getWindowTitle chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatFriendyName name) -> Just $ Right name
     Error code description        -> Just $ Left $ SkypeError code command description
@@ -150,7 +174,7 @@ getWindowTitle (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns all messages in this chat.
 getAllMessages :: (MonadIO m, MonadSkype m) => ChatID -> m [ChatMessageID]
-getAllMessages (ChatID chatID) = executeCommandWithID command $ \response ->
+getAllMessages chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatMessages chatMessageIDs) -> Just $ Right chatMessageIDs
     Error code description               -> Just $ Left $ SkypeError code command description
@@ -160,7 +184,7 @@ getAllMessages (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Returns recent messages in this chat.
 getRecentMessages :: (MonadIO m, MonadSkype m) => ChatID -> m [ChatMessageID]
-getRecentMessages (ChatID chatID) = executeCommandWithID command $ \response ->
+getRecentMessages chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatRecentMessages chatMessageIDs) -> Just $ Right chatMessageIDs
     Error code description                     -> Just $ Left $ SkypeError code command description
@@ -170,7 +194,7 @@ getRecentMessages (ChatID chatID) = executeCommandWithID command $ \response ->
 
 -- | Indicates if this chat has been bookmarked.
 isBookmarked :: (MonadIO m, MonadSkype m) => ChatID -> m Bool
-isBookmarked (ChatID chatID) = executeCommandWithID command $ \response ->
+isBookmarked chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatBookmarked pred) -> Just $ Right pred
     Error code description       -> Just $ Left $ SkypeError code command description
@@ -179,21 +203,44 @@ isBookmarked (ChatID chatID) = executeCommandWithID command $ \response ->
     command = "GET CHAT " <> chatID <> " BOOKMARKED"
 
 -- | Create a chat.
-create :: (MonadIO m, MonadSkype m) => [UserID] -> m (ChatID, ChatStatus)
-create userIDs = executeCommandWithID command $ \response ->
+createChat :: (MonadIO m, MonadSkype m) => [UserID] -> m (ChatID, ChatStatus)
+createChat userIDs = executeCommandWithID command $ \response ->
   case response of
     Chat chatID (ChatStatus status) -> Just $ Right (chatID, status)
     Error code description          -> Just $ Left $ SkypeError code command description
     _                               -> Nothing
   where
-    command = "CAHT CREATE " <> BC.intercalate ", " (map getUserID userIDs)
+    command = "CAHT CREATE " <> BC.intercalate ", " userIDs
 
 -- | Open a chat window.
-open :: (MonadIO m, MonadSkype m) => ChatID -> m ()
-open (ChatID chatID) = executeCommandWithID command $ \response ->
+openChat :: (MonadIO m, MonadSkype m) => ChatID -> m ()
+openChat chatID = executeCommandWithID command $ \response ->
   case response of
     OpenChat chatID        -> Just $ Right ()
     Error code description -> Just $ Left $ SkypeError code command description
     _                      -> Nothing
   where
     command = "OPEN CHAT " <> chatID
+
+-- | Returns a list of chat IDs.
+searchAllChats :: (MonadIO m, MonadSkype m) => m [ChatID]
+searchAllChats = searchChats "SEARCH CHATS"
+
+-- | Returns a list of chat IDs that are open in the window.
+searchActiveChats :: (MonadIO m, MonadSkype m) => m [ChatID]
+searchActiveChats = searchChats "SEARCH ACTIVECHATS"
+
+-- | Returns a list of chat IDs that include unread messages.
+searchMissedChats :: (MonadIO m, MonadSkype m) => m [ChatID]
+searchMissedChats = searchChats "SEARCH MISSEDCHATS"
+
+-- | Returns a list of recent chat IDs.
+searchRecentChats :: (MonadIO m, MonadSkype m) => m [ChatID]
+searchRecentChats = searchChats "SEARCH RECENTCHATS"
+
+searchChats :: (MonadIO m, MonadSkype m) => Command -> m [ChatID]
+searchChats command = executeCommandWithID command $ \response ->
+  case response of
+    Chats chatIDs          -> Just $ Right chatIDs
+    Error code description -> Just $ Left $ SkypeError code command description
+    _                      -> Nothing

@@ -1,4 +1,16 @@
-module Web.Skype.Command.ChatMessage where
+module Web.Skype.Command.ChatMessage (
+  getTimestamp,
+  getSender,
+  getSenderDisplayName,
+  getType,
+  getStatus,
+  getLeaveReason,
+  getChat,
+  getAllUsers,
+  isEditable,
+  getBody,
+  setBody
+) where
 
 import Control.Monad.Trans (MonadIO)
 import Data.Monoid ((<>))
@@ -10,9 +22,9 @@ import Web.Skype.Protocol
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Text.Encoding as T
 
--- | GET CHATMESSAGE <id> TIMESTAMP
+-- | Returns the time when message was sent.
 getTimestamp :: (MonadIO m, MonadSkype m) => ChatMessageID -> m Timestamp
-getTimestamp (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+getTimestamp chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageTimestamp timestamp) -> Just $ Right timestamp
     Error code description                         -> Just $ Left $ SkypeError code command description
@@ -21,9 +33,9 @@ getTimestamp (ChatMessageID chatMessageID) = executeCommandWithID command $ \res
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " TIMESTAMP"
 
--- | GET CHATMESSAGE <id> FROM_HANDLE
-getFromHandle :: (MonadIO m, MonadSkype m) => ChatMessageID -> m UserHandle
-getFromHandle (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+-- | Returns the skype name of the sender of this message.
+getSender :: (MonadIO m, MonadSkype m) => ChatMessageID -> m UserID
+getSender chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageFromHandle userHandle) -> Just $ Right userHandle
     Error code description                           -> Just $ Left $ SkypeError code command description
@@ -32,9 +44,9 @@ getFromHandle (ChatMessageID chatMessageID) = executeCommandWithID command $ \re
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " FROM_HANDLE"
 
--- | GET CHATMESSAGE <id> FROM_DISPNAME
-getFromDisplayName :: (MonadIO m, MonadSkype m) => ChatMessageID -> m UserHandle
-getFromDisplayName (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+-- | Returns the displayed name of the sender of this message.
+getSenderDisplayName :: (MonadIO m, MonadSkype m) => ChatMessageID -> m UserDisplayName
+getSenderDisplayName chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageFromDisplayName userHandle) -> Just $ Right userHandle
     Error code description                                -> Just $ Left $ SkypeError code command description
@@ -43,9 +55,9 @@ getFromDisplayName (ChatMessageID chatMessageID) = executeCommandWithID command 
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " FROM_DISPNAME"
 
--- | GET CHATMESSAGE <id> TYPE
+-- | Returns the message type.
 getType :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageType
-getType (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+getType chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageType messageType) -> Just $ Right messageType
     Error code description                      -> Just $ Left $ SkypeError code command description
@@ -53,9 +65,9 @@ getType (ChatMessageID chatMessageID) = executeCommandWithID command $ \response
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " TYPE"
 
--- | GET CHATMESSAGE <id> STATUS
+-- | Returns the message status.
 getStatus :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageStatus
-getStatus (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+getStatus chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageStatus messageStatus) -> Just $ Right messageStatus
     Error code description                          -> Just $ Left $ SkypeError code command description
@@ -64,9 +76,9 @@ getStatus (ChatMessageID chatMessageID) = executeCommandWithID command $ \respon
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " STATUS"
 
--- | GET CHATMESSAGE <id> LEAVEREASON
+-- | Returns the leave reason.
 getLeaveReason :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageLeaveReason
-getLeaveReason (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+getLeaveReason chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageLeaveReason leaveReason) -> Just $ Right leaveReason
     Error code description                             -> Just $ Left $ SkypeError code command description
@@ -75,9 +87,9 @@ getLeaveReason (ChatMessageID chatMessageID) = executeCommandWithID command $ \r
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " LEAVEREASON"
 
--- | GET CHATMESSAGE <id> CHATNAME
-getChatName :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatID
-getChatName (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+-- | Returns the chat which this message belongs.
+getChat :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatID
+getChat chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageChatName chatID) -> Just $ Right chatID
     Error code description                     -> Just $ Left $ SkypeError code command description
@@ -86,12 +98,46 @@ getChatName (ChatMessageID chatMessageID) = executeCommandWithID command $ \resp
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
                                  <> " CHATNAME"
 
--- | GET CHATMESSAGE <id> BODY
+-- | Returns all users that have been added to the chat.
+getAllUsers :: (MonadIO m, MonadSkype m) => ChatMessageID -> m [UserID]
+getAllUsers chatMessageID = executeCommandWithID command $ \response ->
+  case response of
+    ChatMessage _ (ChatMessageUsers userIDs) -> Just $ Right userIDs
+    Error code description                   -> Just $ Left $ SkypeError code command description
+    _                                        -> Nothing
+  where
+    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " USER"
+
+-- | Indicates if the chat message is editable.
+isEditable :: (MonadIO m, MonadSkype m) => ChatMessageID -> m Bool
+isEditable chatMessageID = executeCommandWithID command $ \response ->
+  case response of
+    ChatMessage _ (ChatMessageIsEditable pred) -> Just $ Right pred
+    Error code description                     -> Just $ Left $ SkypeError code command description
+    _                                          -> Nothing
+  where
+    command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " IS_EDITABLE"
+
+-- | Returns the content of this chat message.
 getBody :: (MonadIO m, MonadSkype m) => ChatMessageID -> m ChatMessageBody
-getBody (ChatMessageID chatMessageID) = executeCommandWithID command $ \response ->
+getBody chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageBody messageBody) -> Just $ Right messageBody
     Error code description                      -> Just $ Left $ SkypeError code command description
     _                                           -> Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " BODY"
+
+-- | Sets the content of this chat message.
+setBody :: (MonadIO m, MonadSkype m) => ChatMessageID -> ChatMessageBody -> m ChatMessageBody
+setBody chatMessageID content = executeCommandWithID command $ \response ->
+  case response of
+    ChatMessage _ (ChatMessageBody messageBody) -> Just $ Right messageBody
+    Error code description                      -> Just $ Left $ SkypeError code command description
+    _                                           -> Nothing
+  where
+    command = "SET CHATMESSAGE " <> BC.pack (show chatMessageID)
+                                 <> " BODY "
+                                 <> T.encodeUtf8 content
