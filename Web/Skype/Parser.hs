@@ -45,8 +45,8 @@ p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
   where
     p_commandID = word8 _numbersign *> takeWhile1 (not . isSpace)
 
--- ALTER
---------
+-- * ALTER
+----------
 
 p_alter :: Parser SkypeResponse
 p_alter = string "ALTER" *> spaces *> choice
@@ -67,8 +67,8 @@ p_alter = string "ALTER" *> spaces *> choice
       , AlterChatSetTopic            <$  (string "SETTOPIC")
       ]
 
--- CHAT
--------
+-- * CHAT
+---------
 
 p_chat :: Parser SkypeResponse
 p_chat = string "CHAT"
@@ -187,16 +187,16 @@ p_chatRole = choice
 p_chatBlob :: Parser ChatBlob
 p_chatBlob = takeByteString
 
--- CHATS
---------
+-- * CHATS
+----------
 
 p_chats :: Parser SkypeResponse
 p_chats = Chats <$> (string "CHATS" *> spaces *> p_chatIDs)
   where
     p_chatIDs = p_chatID `sepBy` (word8 _comma *> spaces)
 
--- CHATMESSAGE
---------------
+-- * CHATMESSAGE
+----------------
 
 p_chatMessage :: Parser SkypeResponse
 p_chatMessage = string "CHATMESSAGE"
@@ -266,8 +266,8 @@ p_chatMessageLeaveReason = choice
   , ChatMessageLeaveReasonUnsubscribe           <$ string "UNSUBSCRIBE"
   ]
 
--- CONNSTATUS
--------------
+-- * CONNSTATUS
+---------------
 
 p_connectionStatus :: Parser SkypeResponse
 p_connectionStatus = ConnectionStatus <$> (string "CONNSTATUS" *> spaces *> p_status)
@@ -278,8 +278,8 @@ p_connectionStatus = ConnectionStatus <$> (string "CONNSTATUS" *> spaces *> p_st
       , ConnectionStatusPausing    <$ string "PAUSING"
       , ConnectionStatusOnline     <$ string "ONLINE" ]
 
--- ERROR
---------
+-- * ERROR
+----------
 
 p_error :: Parser SkypeResponse
 p_error = Error <$> p_code <*> (p_description <|> pure "")
@@ -288,14 +288,14 @@ p_error = Error <$> p_code <*> (p_description <|> pure "")
 
     p_description = spaces *> (T.decodeUtf8 <$> takeByteString)
 
--- OK
------
+-- * OK
+-------
 
 p_ok :: Parser SkypeResponse
 p_ok = OK <$ string "OK"
 
--- OPEN
--------
+-- * OPEN
+---------
 
 p_open :: Parser SkypeResponse
 p_open = string "OPEN" *> spaces *> choice
@@ -303,14 +303,14 @@ p_open = string "OPEN" *> spaces *> choice
   where
     p_chat = OpenChat <$> (string "CHAT" *> spaces *> p_chatID)
 
--- PROTOCOL
------------
+-- * PROTOCOL
+-------------
 
 p_protocol :: Parser SkypeResponse
 p_protocol = Protocol <$> (string "PROTOCOL" *> spaces *> decimal)
 
--- USER
--------
+-- * USER
+---------
 
 p_user :: Parser SkypeResponse
 p_user = User <$> (string "USER" *> spaces *> p_userID <* spaces)
@@ -434,8 +434,8 @@ p_userTimezoneOffset = CTime <$> decimal
 p_userDisplayName :: Parser UserDisplayName
 p_userDisplayName = takeText
 
--- Internal Utilities
----------------------
+-- * Internal Utilities
+-----------------------
 
 p_boolean :: Parser Bool
 p_boolean = (True <$ string "TRUE") <|> (False <$ string "FALSE")

@@ -4,8 +4,10 @@ module Web.Skype.Core (
   MonadSkype(..),
   Skype(..),
   SkypeChannel,
+  SkypeConfig(..),
   SkypeEnvironment(..),
   SkypeError(..),
+  defaultConfig,
   dupSkypeChannel,
   runSkype,
   withSkype
@@ -41,16 +43,22 @@ class (Monad m, MonadError SkypeError m) => MonadSkype m where
   -- | Gets the message channel of Skype from the event loop.
   getSkypeChannel :: m SkypeChannel
 
-  -- | Gets the timeout period of a command (milliseconds).
-  getTimeout :: m Int
+  -- | Gets the skype config.
+  getConfig :: (SkypeConfig -> a) -> m a
 
 newtype Skype c m a = Skype (ErrorT SkypeError (ReaderT (SkypeEnvironment c) m) a)
   deriving (Monad, MonadIO, MonadError SkypeError, MonadReader (SkypeEnvironment c))
 
 data SkypeEnvironment c = SkypeEnvironment
-  { skypeTimeout :: Int
+  { skypeConfig :: SkypeConfig
   , skypeConnection :: c
   }
+
+data SkypeConfig = SkypeConfig
+  { skypeTimeout :: Int }
+
+defaultConfig = SkypeConfig
+  { skypeTimeout = 10000 }
 
 data SkypeError = SkypeError
   { skypeErrorCode :: Int
