@@ -60,7 +60,7 @@ instance MonadIO m => MonadSkype (Skype SkypeConnection m) where
 
   getSkypeChannel = Skype $ asks $ skypeChannel . skypeConnection
 
-  getConfig f = asks skypeConfig >>= return . f
+  getConfig = asks skypeConfig
 
 -- | getDisplayAddress
 getDisplayAddress :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)

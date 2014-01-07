@@ -7,6 +7,7 @@ module Web.Skype.Core (
   SkypeConfig(..),
   SkypeEnvironment(..),
   SkypeError(..),
+  askConfig,
   defaultConfig,
   dupSkypeChannel,
   runSkype,
@@ -44,7 +45,7 @@ class (Monad m, MonadError SkypeError m) => MonadSkype m where
   getSkypeChannel :: m SkypeChannel
 
   -- | Gets the skype config.
-  getConfig :: (SkypeConfig -> a) -> m a
+  getConfig :: m SkypeConfig
 
 newtype Skype c m a = Skype (ErrorT SkypeError (ReaderT (SkypeEnvironment c) m) a)
   deriving (Monad, MonadIO, MonadError SkypeError, MonadReader (SkypeEnvironment c))
@@ -71,14 +72,14 @@ instance Error SkypeError where
   noMsg = SkypeError 0 "" ""
   strMsg = SkypeError 0 "" . fromString
 
--- | runSkype
 runSkype :: Skype c m a -> SkypeEnvironment c -> m (Either SkypeError a)
 runSkype (Skype skype) = runReaderT (runErrorT skype)
 
--- | withSkype
 withSkype :: SkypeEnvironment c -> Skype c m a -> m (Either SkypeError a)
 withSkype = flip runSkype
 
--- | duplicateChannel
 dupSkypeChannel :: (MonadIO m, MonadSkype m) => m SkypeChannel
 dupSkypeChannel = getSkypeChannel >>= liftIO . atomically . dupTChan
+
+askConfig :: (MonadSkype m) => (SkypeConfig -> a) -> m a
+askConfig f = getConfig >>= return . f
