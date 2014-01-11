@@ -50,5 +50,4 @@ library
                        FlexibleContexts,
                        FlexibleInstances,
                        GeneralizedNewtypeDeriving,
-                       MultiParamTypeClasses,
                        OverloadedStrings

@@ -15,7 +15,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as BL
 
-attachX11 :: (MonadIO m, MonadSkype m) => BS.ByteString -> m ()
+attachX11 :: (MonadIO m, MonadSkype m) => BS.ByteString -> Skype m ()
 attachX11 client = executeCommand command $ \response ->
   case response of
     OK                                       -> Just $ Right ()
@@ -25,7 +25,7 @@ attachX11 client = executeCommand command $ \response ->
   where
     command = "NAME " <> client
 
-protocol :: (MonadIO m, MonadSkype m) => Int -> m ()
+protocol :: (MonadIO m, MonadSkype m) => Int -> Skype m ()
 protocol version = executeCommand command $ \response ->
   case response of
     Protocol _ -> Just $ Right ()

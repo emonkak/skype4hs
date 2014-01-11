@@ -34,7 +34,6 @@ p_response = choice
   , p_chatMessage
   , p_connectionStatus
   , p_error
-  , p_ok
   , p_open
   , p_protocol
   , p_user
@@ -287,12 +286,6 @@ p_error = Error <$> p_code <*> (p_description <|> pure "")
     p_code = string "ERROR" *> spaces *> decimal
 
     p_description = spaces *> (T.decodeUtf8 <$> takeByteString)
-
--- * OK
--------
-
-p_ok :: Parser SkypeResponse
-p_ok = OK <$ string "OK"
 
 -- * OPEN
 ---------

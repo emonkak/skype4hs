@@ -8,15 +8,15 @@ module Web.Skype.API.X11 (
 #include <X11/Xlib.h>
 
 import Control.Concurrent (ThreadId, forkIO, killThread)
-import Control.Concurrent.STM.TChan (TChan, newBroadcastTChanIO, writeTChan)
+import Control.Concurrent.STM.TChan (TChan, dupTChan, newBroadcastTChanIO, readTChan, writeTChan)
 import Control.Exception (IOException)
 import Control.Exception.Lifted (catch)
 import Control.Monad (mplus)
 import Control.Monad.Error (Error, strMsg)
 import Control.Monad.Error.Class (MonadError, catchError, throwError)
-import Control.Monad.Reader (asks)
+import Control.Monad.Reader (MonadReader(..), ReaderT, asks, runReaderT)
 import Control.Monad.STM (atomically)
-import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.Trans (MonadTrans, MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bits ((.&.))
 import Data.Maybe (listToMaybe)
@@ -52,28 +52,20 @@ data SkypeAPI = SkypeAPI
   }
   deriving (Show, Eq)
 
-instance MonadIO m => MonadSkype (Skype SkypeConnection m) where
-  attach = attachX11 . BC.pack =<< liftIO getProgName
+instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
+  sendCommand command = asks skypeApi >>= liftIO . flip sendTo command
 
-  sendCommand command = Skype $ asks (skypeApi . skypeConnection) >>=
-                                liftIO . flip sendTo command
+  getSkypeChannel = asks skypeChannel
 
-  getSkypeChannel = Skype $ asks $ skypeChannel . skypeConnection
+openDisplay :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
+            => String -> m X.Display
+openDisplay address = liftIO (X.openDisplay address) `catch` throwError
 
-  getConfig = asks skypeConfig
-
--- | getDisplayAddress
 getDisplayAddress :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
                   => m String
 getDisplayAddress = liftIO (getEnv "SKYPEDISPLAY" `mplus` getEnv "DISPLAY")
                     `catch` throwError
 
--- | openDisplay
-openDisplay :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-            => String -> m X.Display
-openDisplay address = liftIO (X.openDisplay address) `catch` throwError
-
--- | createWindow
 createWindow :: (Error e, MonadIO m, MonadError e m)
              => X.Display -> X.Window -> m X.Window
 createWindow display root = do
@@ -86,7 +78,6 @@ createWindow display root = do
      then throwError $ strMsg "Can't create the window"
      else return window
 
--- | createAtom
 createAtom :: (Error e, MonadIO m, MonadError e m)
            => X.Display -> String -> m X.Atom
 createAtom display name = do
@@ -96,7 +87,6 @@ createAtom display name = do
     then throwError $ strMsg $ "Can't create the atom: " ++ name
     else return atom
 
--- | getSkypeInstance
 getSkypeInstanceWindow :: (Error e, MonadIO m, MonadError e m)
                        => X.Display -> X.Window -> m X.Window
 getSkypeInstanceWindow display root = do
@@ -108,12 +98,10 @@ getSkypeInstanceWindow display root = do
     Nothing       -> throwError $ strMsg "Skype instance window is not found"
     Just property -> return $ fromIntegral property .&. 0xffffffff
 
--- | connect
 connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
         => m SkypeConnection
 connect = connectTo =<< getDisplayAddress
 
--- | connectTo
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
           => String
           -> m SkypeConnection
@@ -122,15 +110,20 @@ connectTo address = do
   chan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $ runEventLoop api $ atomically . writeTChan chan
 
-  return SkypeConnection
-    { skypeApi = api
-    , skypeChannel = chan
-    , skypeThread = thread
-    }
+  let connection = SkypeConnection
+                   { skypeApi = api
+                   , skypeChannel = chan
+                   , skypeThread = thread
+                   }
 
--- | disconnect
-disconnect :: SkypeConnection -> IO ()
-disconnect connection = do
+  result <- runReaderT attach connection
+
+  case result of
+    Just error -> disconnect connection >> throwError error
+    Nothing    -> return connection
+
+disconnect :: (MonadIO m) => SkypeConnection -> m ()
+disconnect connection = liftIO $ do
   killThread $ skypeThread connection
 
   let api = skypeApi connection
@@ -140,7 +133,6 @@ disconnect connection = do
   X.destroyWindow display window
   X.closeDisplay display
 
--- | createApi
 createApi :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m) => String -> m SkypeAPI
 createApi address = do
   display <- openDisplay address
@@ -174,7 +166,25 @@ createApi address = do
       liftIO $ X.closeDisplay display
       throwError error
 
--- | sendTo
+attach :: (MonadIO m, MonadSkype m, Error e) => m (Maybe e)
+attach = do
+  chan <- dupSkypeChannel
+
+  liftIO getProgName >>= setClientName
+
+  loop chan
+  where
+    setClientName = sendCommand . mappend "NAME " . BC.pack
+
+    loop chan = do
+      response <- liftIO $ atomically $ readTChan chan
+
+      case response of
+        "OK"                 -> return $ Nothing
+        "CONNSTATUS OFFLINE" -> return $ Just $ strMsg "Skype is offline"
+        "ERROR 68"           -> return $ Just $ strMsg "Connection refused"
+        otherwise            -> loop chan
+
 sendTo :: SkypeAPI -> BS.ByteString -> IO ()
 sendTo api message = X.allocaXEvent $ \p_event -> do
   let (X.Display display) = skypeDisplay api
@@ -206,13 +216,12 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
       X.sendEvent display (skypeInstanceWindow api) False 0 p_event
       X.flush display
 
-splitPerChunk bs
-  | BS.length bs == messageChunkSize = bs : BS.singleton 0 : []
-  | BS.length bs < messageChunkSize  = BS.snoc bs 0 : []
-  | otherwise                        = let (xs, ys) = BS.splitAt messageChunkSize bs
-                                       in  xs : splitPerChunk ys
+    splitPerChunk bs
+      | BS.length bs == messageChunkSize = bs : BS.singleton 0 : []
+      | BS.length bs < messageChunkSize  = BS.snoc bs 0 : []
+      | otherwise                        = let (xs, ys) = BS.splitAt messageChunkSize bs
+                                          in  xs : splitPerChunk ys
 
--- | ptrIndex
 ptrIndex :: (Eq a, Storable a) => Ptr a -> a -> Int -> IO (Maybe Int)
 ptrIndex p x n = go 0 x $ take n $ iterate (flip plusPtr 1) p
   where
@@ -223,12 +232,10 @@ ptrIndex p x n = go 0 x $ take n $ iterate (flip plusPtr 1) p
         then return $ Just acc
         else go (acc + 1) element xs
 
--- | messageChunkSize
 messageChunkSize :: Int
 messageChunkSize = #{const sizeof(((XClientMessageEvent *) 0)->data.b) / sizeof(((XClientMessageEvent *) 0)->data.b[0])}
 {-# INLINE messageChunkSize #-}
 
--- | runEventLoop
 runEventLoop :: SkypeAPI -> (BL.ByteString -> IO ()) -> IO ()
 runEventLoop api action = X.allocaXEvent $ loop mempty
   where

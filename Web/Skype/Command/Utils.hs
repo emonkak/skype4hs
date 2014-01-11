@@ -8,8 +8,9 @@ module Web.Skype.Command.Utils (
 
 import Control.Concurrent.STM.TChan (readTChan)
 import Control.Monad.Error (strMsg, throwError)
+import Control.Monad.Reader (asks)
 import Control.Monad.STM (atomically)
-import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.Trans (MonadIO, lift, liftIO)
 import Data.Monoid ((<>))
 import Data.Unique (newUnique, hashUnique)
 import System.Timeout (timeout)
@@ -25,7 +26,7 @@ type HandlerResult a = Maybe (Either SkypeError a)
 executeCommand :: (MonadIO m, MonadSkype m)
                => Command
                -> (SkypeResponse -> HandlerResult a)
-               -> m a
+               -> Skype m a
 executeCommand command handler = handleCommand command $ \response ->
   case parseResponse response of
     Just result -> handler result
@@ -34,7 +35,7 @@ executeCommand command handler = handleCommand command $ \response ->
 executeCommandWithID :: (MonadIO m, MonadSkype m)
                      => Command
                      -> (SkypeResponse -> HandlerResult a)
-                     -> m a
+                     -> Skype m a
 executeCommandWithID command handler =
   handleCommandWithID command $ \expectID response ->
     case parseResponseWithCommandID response of
@@ -46,13 +47,13 @@ executeCommandWithID command handler =
 handleCommand :: (MonadIO m, MonadSkype m)
        => Command
        -> (BL.ByteString -> HandlerResult a)
-       -> m a
+       -> Skype m a
 handleCommand command handler = do
   chan <- dupSkypeChannel
 
   sendCommand command
 
-  time <- askConfig skypeTimeout
+  time <- asks skypeTimeout
   result <- liftIO $ timeout (time * 1000) $ loop chan
 
   maybe (throwError $ strMsg "command timeout")
@@ -69,7 +70,7 @@ handleCommand command handler = do
 handleCommandWithID :: (MonadIO m, MonadSkype m)
                     => Command
                     -> (CommandID -> BL.ByteString -> HandlerResult a)
-                    -> m a
+                    -> Skype m a
 handleCommandWithID command handler = do
   commandID <- liftIO $ (BC.pack . show . hashUnique) `fmap` newUnique
 

@@ -2,12 +2,10 @@ module Web.Skype.Core (
   Command,
   CommandID,
   MonadSkype(..),
-  Skype(..),
+  Skype,
   SkypeChannel,
   SkypeConfig(..),
-  SkypeEnvironment(..),
   SkypeError(..),
-  askConfig,
   defaultConfig,
   dupSkypeChannel,
   runSkype,
@@ -20,7 +18,7 @@ import Control.Exception (Exception)
 import Control.Monad.Error (MonadError, Error(..), ErrorT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), runReaderT)
 import Control.Monad.STM (atomically)
-import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.Trans (MonadIO, MonadTrans, lift, liftIO)
 import Data.String (fromString)
 import Data.Typeable (Typeable)
 
@@ -34,26 +32,23 @@ type CommandID = BS.ByteString
 type SkypeChannel = TChan BL.ByteString
 
 -- | Provides the DSL for Skype API.
-class (Monad m, MonadError SkypeError m) => MonadSkype m where
-  -- | Attaches to the skype instance.
-  attach :: m ()
-
+class (Monad m) => MonadSkype m where
   -- | Sends the command message to the Skype instance.
   sendCommand :: Command -> m ()
 
   -- | Gets the message channel of Skype from the event loop.
   getSkypeChannel :: m SkypeChannel
 
-  -- | Gets the skype config.
-  getConfig :: m SkypeConfig
+newtype Skype m a = Skype (ErrorT SkypeError (ReaderT SkypeConfig m) a)
+  deriving (Monad, MonadIO, MonadError SkypeError, MonadReader SkypeConfig)
 
-newtype Skype c m a = Skype (ErrorT SkypeError (ReaderT (SkypeEnvironment c) m) a)
-  deriving (Monad, MonadIO, MonadError SkypeError, MonadReader (SkypeEnvironment c))
+instance MonadTrans Skype where
+  lift = Skype . lift . lift
 
-data SkypeEnvironment c = SkypeEnvironment
-  { skypeConfig :: SkypeConfig
-  , skypeConnection :: c
-  }
+instance MonadSkype m => MonadSkype (Skype m) where
+  sendCommand = lift . sendCommand
+
+  getSkypeChannel = lift getSkypeChannel
 
 data SkypeConfig = SkypeConfig
   { skypeTimeout :: Int }
@@ -72,14 +67,18 @@ instance Error SkypeError where
   noMsg = SkypeError 0 "" ""
   strMsg = SkypeError 0 "" . fromString
 
-runSkype :: Skype c m a -> SkypeEnvironment c -> m (Either SkypeError a)
-runSkype (Skype skype) = runReaderT (runErrorT skype)
+runSkype :: Skype (ReaderT c m) a
+         -> c
+         -> SkypeConfig
+         -> m (Either SkypeError a)
+runSkype (Skype skype) connection config =
+  runReaderT (runReaderT (runErrorT skype) config) connection
 
-withSkype :: SkypeEnvironment c -> Skype c m a -> m (Either SkypeError a)
-withSkype = flip runSkype
+withSkype :: c
+          -> SkypeConfig
+          -> Skype (ReaderT c m) a
+          -> m (Either SkypeError a)
+withSkype connection config skype = runSkype skype connection config
 
 dupSkypeChannel :: (MonadIO m, MonadSkype m) => m SkypeChannel
 dupSkypeChannel = getSkypeChannel >>= liftIO . atomically . dupTChan
-
-askConfig :: (MonadSkype m) => (SkypeConfig -> a) -> m a
-askConfig f = getConfig >>= return . f
