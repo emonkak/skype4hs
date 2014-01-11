@@ -9,7 +9,7 @@ import Data.Monoid ((<>))
 import Web.Skype.Command.Utils
 import Web.Skype.Core
 import Web.Skype.Parser
-import Web.Skype.Protocol
+import Web.Skype.Protocol.Misc
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BC

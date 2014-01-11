@@ -43,3 +43,5 @@ type Timestamp = EpochTime
 
 type ErrorCode = Int
 type ErrorDescription = T.Text
+
+type ProtocolVersion = Int

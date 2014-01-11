@@ -24,11 +24,11 @@ library
                        Web.Skype.Command.Utils,
                        Web.Skype.Core,
                        Web.Skype.Parser,
-                       Web.Skype.Protocol
-  other-modules:
+                       Web.Skype.Protocol,
                        Web.Skype.Protocol.Chat,
                        Web.Skype.Protocol.ChatMember,
                        Web.Skype.Protocol.ChatMessage,
+                       Web.Skype.Protocol.Misc,
                        Web.Skype.Protocol.Types,
                        Web.Skype.Protocol.User
   -- other-extensions:

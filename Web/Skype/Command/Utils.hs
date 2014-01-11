@@ -16,7 +16,6 @@ import Data.Unique (newUnique, hashUnique)
 import System.Timeout (timeout)
 import Web.Skype.Core
 import Web.Skype.Parser
-import Web.Skype.Protocol
 
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as BL

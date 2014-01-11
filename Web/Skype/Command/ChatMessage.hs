@@ -17,7 +17,8 @@ import Data.Monoid ((<>))
 import Web.Skype.Command.Utils
 import Web.Skype.Core
 import Web.Skype.Parser
-import Web.Skype.Protocol
+import Web.Skype.Protocol.ChatMessage
+import Web.Skype.Protocol.Types
 
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Text.Encoding as T
