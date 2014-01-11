@@ -220,7 +220,7 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
       | BS.length bs == messageChunkSize = bs : BS.singleton 0 : []
       | BS.length bs < messageChunkSize  = BS.snoc bs 0 : []
       | otherwise                        = let (xs, ys) = BS.splitAt messageChunkSize bs
-                                          in  xs : splitPerChunk ys
+                                           in  xs : splitPerChunk ys
 
 ptrIndex :: (Eq a, Storable a) => Ptr a -> a -> Int -> IO (Maybe Int)
 ptrIndex p x n = go 0 x $ take n $ iterate (flip plusPtr 1) p
