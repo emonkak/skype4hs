@@ -80,7 +80,7 @@ data SkypeConfig = SkypeConfig
   { skypeTimeout :: Int }
 
 defaultConfig = SkypeConfig
-  { skypeTimeout = 10000 }
+  { skypeTimeout = 10000 * 1000 }
 
 data SkypeError = SkypeError
   { skypeErrorCode :: Int

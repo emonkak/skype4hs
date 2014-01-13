@@ -53,9 +53,9 @@ handleCommand command handler = do
   sendCommand command
 
   time <- asks skypeTimeout
-  result <- liftIO $ timeout (time * 1000) $ loop chan
+  result <- liftIO $ timeout time $ loop chan
 
-  maybe (throwError $ strMsg "command timeout")
+  maybe (throwError $ strMsg "Command timeout")
         (either throwError return)
         result
   where

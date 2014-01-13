@@ -12,7 +12,7 @@ import Control.Concurrent.STM.TChan (TChan, dupTChan, newBroadcastTChanIO, readT
 import Control.Exception (IOException)
 import Control.Exception.Lifted (catch)
 import Control.Monad (mplus)
-import Control.Monad.Error (Error, strMsg)
+import Control.Monad.Error (Error, runErrorT, strMsg)
 import Control.Monad.Error.Class (MonadError, catchError, throwError)
 import Control.Monad.Reader (MonadReader(..), ReaderT, asks, runReaderT)
 import Control.Monad.STM (atomically)
@@ -26,6 +26,7 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 import System.Environment (getEnv, getProgName)
+import System.Timeout (timeout)
 import Web.Skype.Command.Misc (attachX11)
 import Web.Skype.Core
 
@@ -100,12 +101,13 @@ getSkypeInstanceWindow display root = do
 
 connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
         => m SkypeConnection
-connect = connectTo =<< getDisplayAddress
+connect = connectTo (10000 * 1000) =<< getDisplayAddress
 
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-          => String
+          => Int
+          -> String
           -> m SkypeConnection
-connectTo address = do
+connectTo time address = do
   api <- createApi address
   chan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $ runEventLoop api $ atomically . writeTChan chan
@@ -116,11 +118,11 @@ connectTo address = do
                    , skypeThread = thread
                    }
 
-  result <- runReaderT attach connection
+  result <- runErrorT $ runReaderT (attach time) connection
 
   case result of
-    Just error -> disconnect connection >> throwError error
-    Nothing    -> return connection
+    Left error -> disconnect connection >> throwError error
+    Right _    -> return connection
 
 disconnect :: (MonadIO m) => SkypeConnection -> m ()
 disconnect connection = liftIO $ do
@@ -166,23 +168,27 @@ createApi address = do
       liftIO $ X.closeDisplay display
       throwError error
 
-attach :: (MonadIO m, MonadSkype m, Error e) => m (Maybe e)
-attach = do
+attach :: (Error e, MonadError e m, MonadIO m, MonadSkype m) => Int -> m ()
+attach time = do
   chan <- dupSkypeChannel
 
   liftIO getProgName >>= setClientName
 
-  loop chan
+  result <- liftIO $ timeout time $ loop chan
+
+  maybe (throwError $ strMsg "Command timeout")
+        (either throwError return)
+        result
   where
     setClientName = sendCommand . mappend "NAME " . BC.pack
 
     loop chan = do
-      response <- liftIO $ atomically $ readTChan chan
+      response <- atomically $ readTChan chan
 
       case response of
-        "OK"                 -> return $ Nothing
-        "CONNSTATUS OFFLINE" -> return $ Just $ strMsg "Skype is offline"
-        "ERROR 68"           -> return $ Just $ strMsg "Connection refused"
+        "OK"                 -> return $ Right ()
+        "CONNSTATUS OFFLINE" -> return $ Left $ strMsg "Skype is offline"
+        "ERROR 68"           -> return $ Left $ strMsg "Connection refused"
         otherwise            -> loop chan
 
 sendTo :: SkypeAPI -> BS.ByteString -> IO ()
