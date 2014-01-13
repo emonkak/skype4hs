@@ -1,5 +1,4 @@
 module Web.Skype.Command.Misc (
-  attachX11,
   protocol
 ) where
 
@@ -14,16 +13,6 @@ import Web.Skype.Protocol.Misc
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as BL
-
-attachX11 :: (MonadIO m, MonadSkype m) => BS.ByteString -> SkypeT m ()
-attachX11 client = executeCommand command $ \response ->
-  case response of
-    OK                                       -> Just $ Right ()
-    ConnectionStatus ConnectionStatusOffline -> Just $ Left $ strMsg "SkypeT is offline"
-    Error code description                   -> Just $ Left $ SkypeError code command description
-    _                                        -> Nothing
-  where
-    command = "NAME " <> client
 
 protocol :: (MonadIO m, MonadSkype m) => Int -> SkypeT m ()
 protocol version = executeCommand command $ \response ->

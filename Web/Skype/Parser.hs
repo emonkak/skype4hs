@@ -39,7 +39,6 @@ data SkypeResponse
   | ChatMessage ChatMessageID ChatMessageProperty
   | ConnectionStatus ConnectionStatus
   | Error ErrorCode ErrorDescription
-  | OK
   | OpenChat ChatID
   | Protocol ProtocolVersion
   | User UserID UserProperty

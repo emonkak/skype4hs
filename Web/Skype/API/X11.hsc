@@ -27,7 +27,6 @@ import Foreign.C.String
 import Foreign.C.Types
 import System.Environment (getEnv, getProgName)
 import System.Timeout (timeout)
-import Web.Skype.Command.Misc (attachX11)
 import Web.Skype.Core
 
 import qualified Data.ByteString as BS
