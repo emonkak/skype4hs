@@ -25,7 +25,7 @@ type HandlerResult a = Maybe (Either SkypeError a)
 executeCommand :: (MonadIO m, MonadSkype m)
                => Command
                -> (SkypeResponse -> HandlerResult a)
-               -> Skype m a
+               -> SkypeT m a
 executeCommand command handler = handleCommand command $ \response ->
   case parseResponse response of
     Just result -> handler result
@@ -34,7 +34,7 @@ executeCommand command handler = handleCommand command $ \response ->
 executeCommandWithID :: (MonadIO m, MonadSkype m)
                      => Command
                      -> (SkypeResponse -> HandlerResult a)
-                     -> Skype m a
+                     -> SkypeT m a
 executeCommandWithID command handler =
   handleCommandWithID command $ \expectID response ->
     case parseResponseWithCommandID response of
@@ -46,7 +46,7 @@ executeCommandWithID command handler =
 handleCommand :: (MonadIO m, MonadSkype m)
        => Command
        -> (BL.ByteString -> HandlerResult a)
-       -> Skype m a
+       -> SkypeT m a
 handleCommand command handler = do
   chan <- dupSkypeChannel
 
@@ -69,7 +69,7 @@ handleCommand command handler = do
 handleCommandWithID :: (MonadIO m, MonadSkype m)
                     => Command
                     -> (CommandID -> BL.ByteString -> HandlerResult a)
-                    -> Skype m a
+                    -> SkypeT m a
 handleCommandWithID command handler = do
   commandID <- liftIO $ (BC.pack . show . hashUnique) `fmap` newUnique
 

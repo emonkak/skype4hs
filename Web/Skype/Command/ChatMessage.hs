@@ -24,7 +24,7 @@ import qualified Data.ByteString.Char8 as BC
 import qualified Data.Text.Encoding as T
 
 -- | Returns the time when message was sent.
-getTimestamp :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m Timestamp
+getTimestamp :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m Timestamp
 getTimestamp chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageTimestamp timestamp) -> Just $ Right timestamp
@@ -35,7 +35,7 @@ getTimestamp chatMessageID = executeCommandWithID command $ \response ->
                                  <> " TIMESTAMP"
 
 -- | Returns the skype name of the sender of this message.
-getSender :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m UserID
+getSender :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m UserID
 getSender chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageFromHandle userHandle) -> Just $ Right userHandle
@@ -46,7 +46,7 @@ getSender chatMessageID = executeCommandWithID command $ \response ->
                                  <> " FROM_HANDLE"
 
 -- | Returns the displayed name of the sender of this message.
-getSenderDisplayName :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m UserDisplayName
+getSenderDisplayName :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m UserDisplayName
 getSenderDisplayName chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageFromDisplayName userHandle) -> Just $ Right userHandle
@@ -57,7 +57,7 @@ getSenderDisplayName chatMessageID = executeCommandWithID command $ \response ->
                                  <> " FROM_DISPNAME"
 
 -- | Returns the message type.
-getType :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m ChatMessageType
+getType :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m ChatMessageType
 getType chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageType messageType) -> Just $ Right messageType
@@ -67,7 +67,7 @@ getType chatMessageID = executeCommandWithID command $ \response ->
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " TYPE"
 
 -- | Returns the message status.
-getStatus :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m ChatMessageStatus
+getStatus :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m ChatMessageStatus
 getStatus chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageStatus messageStatus) -> Just $ Right messageStatus
@@ -78,7 +78,7 @@ getStatus chatMessageID = executeCommandWithID command $ \response ->
                                  <> " STATUS"
 
 -- | Returns the leave reason.
-getLeaveReason :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m ChatMessageLeaveReason
+getLeaveReason :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m ChatMessageLeaveReason
 getLeaveReason chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageLeaveReason leaveReason) -> Just $ Right leaveReason
@@ -89,7 +89,7 @@ getLeaveReason chatMessageID = executeCommandWithID command $ \response ->
                                  <> " LEAVEREASON"
 
 -- | Returns the chat which this message belongs.
-getChat :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m ChatID
+getChat :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m ChatID
 getChat chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageChatName chatID) -> Just $ Right chatID
@@ -100,7 +100,7 @@ getChat chatMessageID = executeCommandWithID command $ \response ->
                                  <> " CHATNAME"
 
 -- | Returns all users that have been added to the chat.
-getAllUsers :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m [UserID]
+getAllUsers :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m [UserID]
 getAllUsers chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageUsers userIDs) -> Just $ Right userIDs
@@ -111,7 +111,7 @@ getAllUsers chatMessageID = executeCommandWithID command $ \response ->
                                  <> " USER"
 
 -- | Indicates if the chat message is editable.
-isEditable :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m Bool
+isEditable :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m Bool
 isEditable chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageIsEditable pred) -> Just $ Right pred
@@ -122,7 +122,7 @@ isEditable chatMessageID = executeCommandWithID command $ \response ->
                                  <> " IS_EDITABLE"
 
 -- | Returns the content of this chat message.
-getBody :: (MonadIO m, MonadSkype m) => ChatMessageID -> Skype m ChatMessageBody
+getBody :: (MonadIO m, MonadSkype m) => ChatMessageID -> SkypeT m ChatMessageBody
 getBody chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageBody messageBody) -> Just $ Right messageBody
@@ -132,7 +132,7 @@ getBody chatMessageID = executeCommandWithID command $ \response ->
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID) <> " BODY"
 
 -- | Sets the content of this chat message.
-setBody :: (MonadIO m, MonadSkype m) => ChatMessageID -> ChatMessageBody -> Skype m ChatMessageBody
+setBody :: (MonadIO m, MonadSkype m) => ChatMessageID -> ChatMessageBody -> SkypeT m ChatMessageBody
 setBody chatMessageID content = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageBody messageBody) -> Just $ Right messageBody
