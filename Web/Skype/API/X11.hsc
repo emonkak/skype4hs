@@ -26,7 +26,6 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 import System.Environment (getEnv, getProgName)
-import System.Timeout (timeout)
 import Web.Skype.Core
 
 import qualified Data.ByteString as BS
@@ -100,13 +99,12 @@ getSkypeInstanceWindow display root = do
 
 connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
         => m SkypeConnection
-connect = connectTo (10000 * 1000) =<< getDisplayAddress
+connect = connectTo =<< getDisplayAddress
 
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-          => Int
-          -> String
+          => String
           -> m SkypeConnection
-connectTo time address = do
+connectTo address = do
   api <- createApi address
   chan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $ runEventLoop api $ atomically . writeTChan chan
@@ -117,7 +115,7 @@ connectTo time address = do
                    , skypeThread = thread
                    }
 
-  result <- runErrorT $ runReaderT (attach time) connection
+  result <- runErrorT $ runReaderT attach connection
 
   case result of
     Left error -> disconnect connection >> throwError error
@@ -167,17 +165,13 @@ createApi address = do
       liftIO $ X.closeDisplay display
       throwError error
 
-attach :: (Error e, MonadError e m, MonadIO m, MonadSkype m) => Int -> m ()
-attach time = do
+attach :: (Error e, MonadError e m, MonadIO m, MonadSkype m) => m ()
+attach = do
   chan <- dupSkypeChannel
 
   liftIO getProgName >>= setClientName
 
-  result <- liftIO $ timeout time $ loop chan
-
-  maybe (throwError $ strMsg "Command timeout")
-        (either throwError return)
-        result
+  liftIO (loop chan) >>= either throwError return
   where
     setClientName = sendCommand . mappend "NAME " . BC.pack
 
