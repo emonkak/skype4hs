@@ -41,8 +41,7 @@ class (Monad m) => MonadSkype m where
   -- | Gets the message channel of Skype from the event loop.
   getSkypeChannel :: m SkypeChannel
 
-newtype SkypeT m a = SkypeT
-  { runSkypeT :: ErrorT SkypeError (ReaderT SkypeConfig m) a }
+newtype SkypeT m a = SkypeT (ErrorT SkypeError (ReaderT SkypeConfig m) a)
   deriving ( Applicative
            , Functor
            , Monad
@@ -59,8 +58,8 @@ instance MonadTransControl SkypeT where
   newtype StT SkypeT a = StSkype { unStSkype :: Either SkypeError a }
 
   liftWith f = SkypeT . ErrorT . ReaderT $ \r ->
-    liftM Right $ f $ \t ->
-      liftM StSkype $ runReaderT (runErrorT (runSkypeT t)) r
+    liftM Right $ f $ \(SkypeT t) ->
+      liftM StSkype $ runReaderT (runErrorT t) r
 
   restoreT = SkypeT . ErrorT . ReaderT . const . liftM unStSkype
 
@@ -97,8 +96,8 @@ runSkype :: connection
          -> SkypeConfig
          -> SkypeT (ReaderT connection m) a
          -> m (Either SkypeError a)
-runSkype connection config skype =
-  runReaderT (runReaderT (runErrorT (runSkypeT skype)) config) connection
+runSkype connection config (SkypeT skype) =
+  runReaderT (runReaderT (runErrorT skype) config) connection
 
 dupSkypeChannel :: (MonadIO m, MonadSkype m) => m SkypeChannel
 dupSkypeChannel = getSkypeChannel >>= liftIO . atomically . dupTChan
