@@ -22,6 +22,7 @@ library
     build-depends:     X11 >=1.6.1
 
   if os(darwin)
+    exposed-modules:   Web.Skype.API.Cocoa
     include-dirs:      /usr/X11/include
     extra-lib-dirs:    /usr/X11/lib
 
@@ -39,8 +40,7 @@ library
                        Web.Skype.Protocol.Types,
                        Web.Skype.Protocol.User
   -- other-extensions:
-  build-depends:       X11 >=1.6.1,
-                       attoparsec >=0.10,
+  build-depends:       attoparsec >=0.10,
                        base >=4.6,
                        bytestring >=0.10.2,
                        lifted-base >=0.2,
