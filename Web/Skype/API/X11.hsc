@@ -27,6 +27,7 @@ import Foreign.C.String
 import Foreign.C.Types
 import System.Environment (getEnv, getProgName)
 import Web.Skype.Core
+import Web.Skype.Command.Misc (name, protocol)
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BS
@@ -115,10 +116,12 @@ connectTo address = do
                    , skypeThread = thread
                    }
 
-  result <- runErrorT $ runReaderT attach connection
+  result <- runSkype connection defaultConfig $ do
+    liftIO getProgName >>= name . BC.pack
+    protocol 9999
 
   case result of
-    Left error -> disconnect connection >> throwError error
+    Left error -> disconnect connection >> throwError (strMsg $ show error)
     Right _    -> return connection
 
 disconnect :: (MonadIO m) => SkypeConnection -> m ()
@@ -164,25 +167,6 @@ createApi address = do
       liftIO $ X.destroyWindow display window
       liftIO $ X.closeDisplay display
       throwError error
-
-attach :: (Error e, MonadError e m, MonadIO m, MonadSkype m) => m ()
-attach = do
-  chan <- dupSkypeChannel
-
-  liftIO getProgName >>= setClientName
-
-  liftIO (loop chan) >>= either throwError return
-  where
-    setClientName = sendCommand . mappend "NAME " . BC.pack
-
-    loop chan = do
-      response <- atomically $ readTChan chan
-
-      case response of
-        "OK"                 -> return $ Right ()
-        "CONNSTATUS OFFLINE" -> return $ Left $ strMsg "Skype is offline"
-        "ERROR 68"           -> return $ Left $ strMsg "Connection refused"
-        otherwise            -> loop chan
 
 sendTo :: SkypeAPI -> BS.ByteString -> IO ()
 sendTo api message = X.allocaXEvent $ \p_event -> do
