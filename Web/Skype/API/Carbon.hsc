@@ -2,182 +2,82 @@ module Web.Skype.API.Carbon where
 
 #include "CoreFoundation/CoreFoundation.h"
 
-import Data.String
-import Foreign hiding (unsafePerformIO)
-import Foreign.C.String
+import Control.Applicative
+import Control.Monad.Reader
+import Data.IORef
+import Foreign
 import Foreign.C.Types
-import System.IO.Unsafe
+import Foreign.C.String
+import System.Environment
+import Web.Skype.API.Carbon.CFBase
+import Web.Skype.API.Carbon.CFDictionary
+import Web.Skype.API.Carbon.CFNotificationCenter
+import Web.Skype.API.Carbon.CFString
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BS
 
--- * CFBase
+data SkypeConnection = forall observer object key value. SkypeConnection
+  { skypeNotificationCenter :: CFNotificationCenterRef
+  , skypeNotificationCallbacks :: IORef [CFNotificationCallbackRef]
+  }
 
-type CFIndex = Int32
+initialize = SkypeConnection <$> c_CFNotificationCenterGetDistributedCenter
+                             <*> newIORef []
 
+connect = do
+  connection <- initialize
 
+  (flip runReaderT) connection $ do
+    register "SKSkypeAPINotification" onReceivedNotification
+    register "SKSkypeWillQuit"        onQuitting
+    register "SKSkypeBecameAvailable" onBecomeAvailable
+    register "SKAvailabilityUpdate"   onUpdateAvailability
+    register "SKSkypeAttachResponse"  onReceivedAttachResponse
 
+    attach
 
--- * CFAllocator
+attach = do
+  center <- asks skypeNotificationCenter
 
-data CFAllocator
+  appName <- liftIO $ getProgName
 
-type CFAllocatorRef = Ptr CFAllocator
+  liftIO $ withCFString "test" $ \appName_ptr -> do
+    c_CFShow appName_ptr
 
-defaultAllocator :: CFAllocatorRef
-defaultAllocator = unsafePerformIO $ peek ptr_CFAllocatorDefault
-
-foreign import ccall unsafe "&kCFAllocatorDefault"
-  ptr_CFAllocatorDefault :: Ptr CFAllocatorRef
-
-foreign import ccall unsafe "&CFRelease"
-  finalizerCFRelease :: FinalizerPtr a
-
-foreign import ccall unsafe "CFShow"
-  c_CFShow :: Ptr a -> IO ()
-
-
-
-
--- * CFDictionary
-
-data CFDictionary k v
-
-type CFDictionaryRef k v = Ptr (CFDictionary k v)
-
-newtype CFDictionaryKeyCallBacks =
-  CFDictionaryKeyCallBacks (Ptr CFDictionaryKeyCallBacks)
-
-newtype CFDictionaryValueCallBacks =
-  CFDictionaryValueCallBacks (Ptr CFDictionaryValueCallBacks)
-
-newCFDictionary :: [(Ptr k, Ptr v)] -> IO (CFDictionaryRef k v)
-newCFDictionary elements =
-  withArrayLen ks $ \len p_ks ->
-  withArray    vs $ \p_vs ->
-  c_CFDictionaryCreate defaultAllocator
-                       p_ks
-                       p_vs
-                       (fromIntegral len)
-                       c_CFTypeDictionaryKeyCallBacks
-                       c_CFTypeDictionaryValueCallBacks
-  where (ks, vs) = unzip elements
-
-foreign import ccall unsafe "&kCFTypeDictionaryKeyCallBacks"
-  c_CFTypeDictionaryKeyCallBacks :: CFDictionaryKeyCallBacks
-
-foreign import ccall unsafe "&kCFTypeDictionaryValueCallBacks"
-  c_CFTypeDictionaryValueCallBacks :: CFDictionaryValueCallBacks
-
-foreign import ccall unsafe "CFDictionaryCreate"
-  c_CFDictionaryCreate :: CFAllocatorRef
-                       -> Ptr (Ptr k)
-                       -> Ptr (Ptr v)
-                       -> CFIndex
-                       -> CFDictionaryKeyCallBacks
-                       -> CFDictionaryValueCallBacks
-                       -> IO (CFDictionaryRef k v)
-
-foreign import ccall unsafe "CFDictionaryGetValue"
-  c_CFDictionaryGetValue :: CFDictionaryRef k v
-                         -> Ptr k
-                         -> IO (Ptr v)
+    c_CFNotificationCenterPostNotification center
+                                           "SKSkypeAPIAttachRequest"
+                                           nullPtr
+                                           nullPtr
+                                           True
 
 
+register name callback = do
+  center <- asks skypeNotificationCenter
+  wrappedCallback <- liftIO $ wrapCFNotificationCallback callback
 
+  liftIO $ c_CFNotificationCenterAddObserver center
+                                             nullPtr
+                                             wrappedCallback
+                                             name
+                                             nullPtr
+                                             deliverImmediately
 
--- * CFString
+  callbacks <- asks skypeNotificationCallbacks
 
-data CFString
+  liftIO $ modifyIORef callbacks (CFNotificationCallbackRef wrappedCallback :)
 
-type CFStringRef = Ptr CFString
+onReceivedNotification :: CFNotificationCallback observer object CFString value
+onReceivedNotification center observer name object userInfo = print userInfo
 
-instance IsString CFStringRef where
-  fromString = unsafeMakeConstantCFString
+onQuitting :: CFNotificationCallback observer object CFString value
+onQuitting center observer name object userInfo = print userInfo
 
-newtype CFStringEncoding = CFStringEncoding CInt
-  deriving (Eq, Show)
+onBecomeAvailable :: CFNotificationCallback observer object CFString value
+onBecomeAvailable center observer name object userInfo = c_CFShow userInfo
 
-#{enum CFStringEncoding, CFStringEncoding
-     , macRoman      = kCFStringEncodingMacRoman
-     , windowsLatin1 = kCFStringEncodingWindowsLatin1
-     , isoLatin1     = kCFStringEncodingISOLatin1
-     , nextStepLatin = kCFStringEncodingNextStepLatin
-     , ascii         = kCFStringEncodingASCII
-     , unicode       = kCFStringEncodingUnicode
-     , utf8          = kCFStringEncodingUTF8
-     , nonLossyASCII = kCFStringEncodingNonLossyASCII
+onUpdateAvailability :: CFNotificationCallback observer object CFString value
+onUpdateAvailability center observer name object userInfo = c_CFShow userInfo
 
-     , utf16         = kCFStringEncodingUTF16
-     , utf16BE       = kCFStringEncodingUTF16BE
-     , utf16LE       = kCFStringEncodingUTF16LE
-
-     , utf32         = kCFStringEncodingUTF32
-     , utf32BE       = kCFStringEncodingUTF32BE
-     , utf32LE       = kCFStringEncodingUTF32LE
- }
-
-makeConstantCFString :: String -> IO CFStringRef
-makeConstantCFString str = withCAString str $ c_CFStringMakeConstantString
-
-unsafeMakeConstantCFString :: String -> CFStringRef
-unsafeMakeConstantCFString = unsafeDupablePerformIO . makeConstantCFString
-
-newCFString :: BS.ByteString -> IO (ForeignPtr CFString)
-newCFString bs = BS.unsafeUseAsCStringLen bs $ \(ptr_char, len) -> do
-  ptr <- c_CFStringCreateWithBytes defaultAllocator
-                                   (castPtr ptr_char)
-                                   (fromIntegral len)
-                                   utf8
-                                   False
-  newForeignPtr finalizerCFRelease ptr
-
-foreign import ccall unsafe "__CFStringMakeConstantString"
-  c_CFStringMakeConstantString :: CString -> IO CFStringRef
-
-foreign import ccall unsafe "CFStringCreateWithBytes"
-  c_CFStringCreateWithBytes :: CFAllocatorRef  -- alloc
-                            -> Ptr Word8  -- bytes
-                            -> CFIndex  -- numBytes
-                            -> CFStringEncoding  -- encoding
-                            -> Bool  -- isExternalRepresentation
-                            -> IO CFStringRef
-
-
-
-
--- * CFNotificationCenter
-
-data CFNotificationCenter
-
-type CFNotificationCenterRef = Ptr CFNotificationCenter
-
-type CFNotificationCallback observer object =
-      forall a. CFNotificationCenterRef
-  -> Ptr observer
-  -> CFStringRef  -- name
-  -> Ptr object
-  -> (CFDictionaryRef CFStringRef a) -- userInfo
-  -> IO ()
-
-newtype CFNotificationSuspensionBehavior = CFNotificationSuspensionBehavior CInt
-  deriving (Eq, Show)
-
-#{enum CFNotificationSuspensionBehavior, CFNotificationSuspensionBehavior
-     , drop               = CFNotificationSuspensionBehaviorDrop
-     , coalesce           = CFNotificationSuspensionBehaviorCoalesce
-     , hold               = CFNotificationSuspensionBehaviorHold
-     , deliverImmediately = CFNotificationSuspensionBehaviorDeliverImmediately
-};
-
-foreign import ccall unsafe "CFNotificationCenterGetDistributedCenter"
-  c_CFNotificationCenterGetDistributedCenter :: IO CFNotificationCenterRef
-
-foreign import ccall unsafe "CFNotificationCenterAddObserver"
-  c_CFNotificationCenterAddObserver :: CFNotificationCenterRef
-                                    -> Ptr observer
-                                    -> (FunPtr (CFNotificationCallback observer object))
-                                    -> CFStringRef
-                                    -> Ptr object
-                                    -> CFNotificationSuspensionBehavior
-                                    -> IO ()
+onReceivedAttachResponse :: CFNotificationCallback observer object CFString value
+onReceivedAttachResponse center observer name object userInfo = c_CFShow userInfo
