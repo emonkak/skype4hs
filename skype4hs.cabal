@@ -27,7 +27,7 @@ library
                        Web.Skype.API.Carbon.CFDictionary,
                        Web.Skype.API.Carbon.CFNotificationCenter,
                        Web.Skype.API.Carbon.CFString
-    frameworks:        CoreFoundation
+    frameworks:        Carbon, Skype
     include-dirs:      /usr/X11/include
     extra-lib-dirs:    /usr/X11/lib
 
