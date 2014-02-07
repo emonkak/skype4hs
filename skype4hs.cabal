@@ -22,12 +22,14 @@ library
     build-depends:     X11 >=1.6.1
 
   if os(darwin)
+    frameworks:        Carbon
     exposed-modules:   Web.Skype.API.Carbon
     other-modules:     Web.Skype.API.Carbon.CFBase,
                        Web.Skype.API.Carbon.CFDictionary,
                        Web.Skype.API.Carbon.CFNotificationCenter,
-                       Web.Skype.API.Carbon.CFString
-    frameworks:        Carbon, Skype
+                       Web.Skype.API.Carbon.CFNumber,
+                       Web.Skype.API.Carbon.CFString,
+                       Web.Skype.API.Carbon.CarbonEventsCore
     include-dirs:      /usr/X11/include
     extra-lib-dirs:    /usr/X11/lib
 
@@ -69,5 +71,6 @@ library
                        NoMonomorphismRestriction,
                        OverloadedStrings,
                        RankNTypes,
+                       ScopedTypeVariables,
                        TypeFamilies,
                        UndecidableInstances
