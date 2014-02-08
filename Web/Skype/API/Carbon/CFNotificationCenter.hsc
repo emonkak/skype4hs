@@ -3,27 +3,34 @@ module Web.Skype.API.Carbon.CFNotificationCenter where
 #include "CoreFoundation/CFNotificationCenter.h"
 
 import Control.Applicative
+import Data.IORef
 import Foreign hiding (addForeignPtrFinalizer, newForeignPtr)
 import Foreign.C.Types
 import Foreign.Concurrent
 import Web.Skype.API.Carbon.CFDictionary
 import Web.Skype.API.Carbon.CFString
 
-newtype NotificationCenter = NotificationCenter
-  { unNotificationCenter :: ForeignPtr CFNotificationCenter }
+data NotificationCenter =
+  forall a.
+  NotificationCenter (ForeignPtr CFNotificationCenter)
+                     (IORef [FunPtr a])
 
 getDistributedCenter :: IO NotificationCenter
 getDistributedCenter = do
+  callbacks <- newIORef []
   center_ptr <- c_CFNotificationCenterGetDistributedCenter
-  NotificationCenter <$> newForeignPtr center_ptr
-    (c_CFNotificationCenterRemoveEveryObserver center_ptr nullPtr)
+  center <- newForeignPtr center_ptr $ do
+    c_CFNotificationCenterRemoveEveryObserver center_ptr nullPtr
+    readIORef callbacks >>= mapM_ freeHaskellFunPtr
+    print "free memory"
+  return $ NotificationCenter center callbacks
 
 addObserver :: NotificationCenter
             -> CFStringRef
             -> CFNotificationCallback observer object key value
             -> IO ()
-addObserver center name callback =
-  withForeignPtr (unNotificationCenter center) $ \center_ptr -> do
+addObserver (NotificationCenter center callbacks) name callback =
+  withForeignPtr center $ \center_ptr -> do
     callback_ptr <- wrapCFNotificationCallback callback
     c_CFNotificationCenterAddObserver
       center_ptr
@@ -32,8 +39,7 @@ addObserver center name callback =
       name
       nullPtr
       suspensionBehaviorDeliverImmediately
-    addForeignPtrFinalizer (unNotificationCenter center) $
-      freeHaskellFunPtr callback_ptr
+    atomicModifyIORef' callbacks (\cs -> (castFunPtr callback_ptr : cs, ()))
 
 data CFNotificationCenter
 

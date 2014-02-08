@@ -10,9 +10,11 @@ import Control.Concurrent.STM.TChan (TChan, newBroadcastTChanIO, writeTChan)
 import Control.Concurrent.STM.TMVar
 import Control.Monad (when)
 import Control.Monad.Error (Error, strMsg)
+import Control.Monad.Error.Class (MonadError, throwError)
 import Control.Monad.Reader (ReaderT, asks)
 import Control.Monad.STM (atomically)
 import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Maybe
 import Foreign
 import Foreign.C.Types
 import System.Environment (getProgName)
@@ -46,8 +48,17 @@ instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
 
   getNotification = asks skypeNotification
 
-connect :: IO SkypeConnection
+connect :: (Error e, MonadIO m, MonadError e m) => m SkypeConnection
 connect = do
+  connection <- liftIO newConnection
+  clientID <- liftIO $ atomically $ readTMVar $ skypeClientID connection
+
+  when (clientID <= 0) $ throwError $ strMsg "Couldn't connect to Skype client."
+
+  return connection
+
+newConnection :: IO SkypeConnection
+newConnection = do
   center <- getDistributedCenter
   clientName <- getProgName >>= newCFString >>= newForeignPtr p_CFRelease
   clientIDVar <- newEmptyTMVarIO
@@ -75,8 +86,8 @@ disconnect connection = do
         maybeClientID
 
 disconnectFrom :: NotificationCenter -> ClientID -> IO ()
-disconnectFrom center clientID =
-  withForeignPtr (unNotificationCenter center) $ \center_ptr ->
+disconnectFrom (NotificationCenter center _) clientID =
+  withForeignPtr center $ \center_ptr ->
   withCFNumber clientID $ \clientID_ptr -> do
     userInfo <- newCFDictionary
       [ ("SKYPE_API_CLIENT_ID" :: CFStringRef, castPtr clientID_ptr) ]
@@ -91,8 +102,8 @@ disconnectFrom center clientID =
     c_CFRelease userInfo
 
 attachTo :: NotificationCenter -> ForeignPtr ClientName -> IO ()
-attachTo center clientName =
-  withForeignPtr (unNotificationCenter center) $ \center_ptr ->
+attachTo (NotificationCenter center _) clientName =
+  withForeignPtr center $ \center_ptr ->
   withForeignPtr clientName $ \clientName_ptr ->
     c_CFNotificationCenterPostNotification
       center_ptr
@@ -102,8 +113,8 @@ attachTo center clientName =
       True
 
 sendTo :: NotificationCenter -> ClientID -> Command -> IO ()
-sendTo center clientID command =
-  withForeignPtr (unNotificationCenter center) $ \center_ptr ->
+sendTo (NotificationCenter center _) clientID command =
+  withForeignPtr center $ \center_ptr ->
   withCFString command $ \command_ptr ->
   withCFNumber clientID $ \clientID_ptr -> do
     userInfo <- newCFDictionary
@@ -146,14 +157,17 @@ attachResponseCallback :: TMVar ClientID
                        -> CFNotificationCallback observer object CFString value
 attachResponseCallback clientIDVar clientName _ _ _ _ userInfo = do
   comparisonResult <- withForeignPtr clientName $ \clientName_ptr -> do
-    clientName' <- getClientName
-    c_CFStringCompare clientName_ptr clientName' compareDefault
+    otherClientName <- getClientName
+    c_CFStringCompare clientName_ptr otherClientName compareDefault
 
   when (comparisonResult == compareEqualTo) $ do
-    clientID <- getClientID
-    atomically $ putTMVar clientIDVar clientID
+    maybeClientID <- getClientID
+    atomically $ putTMVar clientIDVar $ fromMaybe 0 maybeClientID
   where
     getClientName = castPtr <$> c_CFDictionaryGetValue userInfo "SKYPE_API_CLIENT_NAME"
 
-    getClientID = c_CFDictionaryGetValue userInfo "SKYPE_API_ATTACH_RESPONSE" >>=
-                  fromCFNumber . castPtr
+    getClientID = do
+      clientID_ptr <- c_CFDictionaryGetValue userInfo "SKYPE_API_ATTACH_RESPONSE"
+      if clientID_ptr == nullPtr
+        then pure Nothing
+        else Just <$> fromCFNumber (castPtr clientID_ptr)
