@@ -1,8 +1,7 @@
 module Web.Skype.API.X11 (
   SkypeConnection,
   connect,
-  connectTo,
-  disconnect
+  connectTo
 ) where
 
 #include <X11/Xlib.h>
@@ -17,17 +16,18 @@ import Control.Monad.Error.Class (MonadError, catchError, throwError)
 import Control.Monad.Reader (MonadReader(..), ReaderT, asks)
 import Control.Monad.STM (atomically)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Control.Monad.Trans.Control (MonadBaseControl)
+import Control.Monad.Trans.Control (MonadBaseControl, control, restoreM)
 import Data.Bits ((.&.))
 import Data.Maybe (listToMaybe)
 import Data.Monoid (mappend, mempty)
 import Data.Typeable (Typeable)
-import Foreign
+import Foreign hiding (addForeignPtrFinalizer, newForeignPtr)
 import Foreign.C.String
 import Foreign.C.Types
+import Foreign.Concurrent
 import System.Environment (getEnv, getProgName)
-import Web.Skype.Core
 import Web.Skype.Command.Misc (name, protocol)
+import Web.Skype.Core
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BS
@@ -44,7 +44,7 @@ data SkypeConnection = SkypeConnection
   }
 
 data SkypeAPI = SkypeAPI
-  { skypeDisplay :: X.Display
+  { skypeDisplay :: ForeignPtr X.Display
   , skypeWindow :: X.Window
   , skypeInstanceWindow :: X.Window
   , skypeMessageBeginAtom :: X.Atom
@@ -58,8 +58,14 @@ instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
   getNotification = asks skypeNotificaton
 
 openDisplay :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-            => String -> m X.Display
-openDisplay address = liftIO (X.openDisplay address) `catch` throwError
+            => String
+            -> m (ForeignPtr X.Display)
+openDisplay address = do
+  display'@(X.Display display) <- liftIO (X.openDisplay address) `catch` throwError
+  liftIO $ newForeignPtr display $ X.closeDisplay display'
+
+foreign import ccall unsafe "&XCloseDisplay"
+  p_XCloseDisplay :: FunPtr (Ptr X.Display -> IO ())
 
 getDisplayAddress :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
                   => m String
@@ -106,97 +112,76 @@ connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
           => String
           -> m SkypeConnection
 connectTo address = do
-  api <- createApi address
-  chan <- liftIO newBroadcastTChanIO
-  thread <- liftIO $ forkIO $ runEventLoop api $ atomically . writeTChan chan
+  api <- createAPI address
+  notification <- liftIO newBroadcastTChanIO
+  thread <- liftIO $ forkIO $
+            runEventLoop api $ atomically . writeTChan notification
 
   let connection = SkypeConnection
                    { skypeAPI = api
-                   , skypeNotificaton = chan
+                   , skypeNotificaton = notification
                    , skypeThread = thread
                    }
 
-  result <- runSkype connection $ do
-    liftIO getProgName >>= name . BC.pack
-    protocol 9999
+  result <- runSkype connection $ liftIO getProgName >>= name . BC.pack
 
-  case result of
-    Left error -> disconnect connection >> throwError (strMsg $ show error)
-    Right _    -> return connection
+  either (throwError . strMsg . show) (const $ return connection) result
 
-disconnect :: (MonadIO m) => SkypeConnection -> m ()
-disconnect connection = liftIO $ do
-  killThread $ skypeThread connection
-
-  let api = skypeAPI connection
-  let display = skypeDisplay api
-  let window = skypeWindow api
-
-  X.destroyWindow display window
-  X.closeDisplay display
-
-createApi :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m) => String -> m SkypeAPI
-createApi address = do
+createAPI :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
+          => String
+          -> m SkypeAPI
+createAPI address = do
   display <- openDisplay address
 
-  let root = X.defaultRootWindow display
+  withForeignPtr' display $ \display_ptr -> do
+    let display' = X.Display display_ptr
+    let root = X.defaultRootWindow display'
 
-  window <- createWindow display root `catchError` closeDisplay display
+    window <- createWindow display' root
 
-  instanceWindow <- getSkypeInstanceWindow display root `catchError`
-                    closeDisplayAndWindow display window
+    liftIO $ addForeignPtrFinalizer display $
+             X.destroyWindow display' window
 
-  messageBeginAtom <- createAtom display "SKYPECONTROLAPI_MESSAGE_BEGIN" `catchError`
-                      closeDisplayAndWindow display window
-  messageContinueAtom <- createAtom display "SKYPECONTROLAPI_MESSAGE" `catchError`
-                         closeDisplayAndWindow display window
+    instanceWindow <- getSkypeInstanceWindow display' root
 
-  return SkypeAPI
-    { skypeDisplay             = display
-    , skypeWindow              = window
-    , skypeInstanceWindow      = instanceWindow
-    , skypeMessageBeginAtom    = messageBeginAtom
-    , skypeMessageContinueAtom = messageContinueAtom
-    }
-  where
-    closeDisplay display error = do
-      liftIO $ X.closeDisplay display
-      throwError error
+    messageBeginAtom <- createAtom display' "SKYPECONTROLAPI_MESSAGE_BEGIN"
+    messageContinueAtom <- createAtom display' "SKYPECONTROLAPI_MESSAGE"
 
-    closeDisplayAndWindow display window error = do
-      liftIO $ X.destroyWindow display window
-      liftIO $ X.closeDisplay display
-      throwError error
+    return $ SkypeAPI
+      { skypeDisplay             = display
+      , skypeWindow              = window
+      , skypeInstanceWindow      = instanceWindow
+      , skypeMessageBeginAtom    = messageBeginAtom
+      , skypeMessageContinueAtom = messageContinueAtom
+      }
 
 sendTo :: SkypeAPI -> BS.ByteString -> IO ()
-sendTo api message = X.allocaXEvent $ \p_event -> do
-  let (X.Display display) = skypeDisplay api
+sendTo api message =
+  X.allocaXEvent $ \event_ptr ->
+  withForeignPtr (skypeDisplay api) $ \display_ptr -> do
+    #{poke XClientMessageEvent, type}         event_ptr (#{const ClientMessage} :: CInt)
+    #{poke XClientMessageEvent, display}      event_ptr display_ptr
+    #{poke XClientMessageEvent, window}       event_ptr $ skypeWindow api
+    #{poke XClientMessageEvent, message_type} event_ptr $ skypeMessageBeginAtom api
+    #{poke XClientMessageEvent, format}       event_ptr (8 :: CInt)  -- 8 bit values
 
-  #{poke XClientMessageEvent, type}         p_event (#{const ClientMessage} :: CInt)
-  #{poke XClientMessageEvent, display}      p_event display
-  #{poke XClientMessageEvent, window}       p_event $ skypeWindow api
-  #{poke XClientMessageEvent, message_type} p_event $ skypeMessageBeginAtom api
-  #{poke XClientMessageEvent, format}       p_event (8 :: CInt)  -- 8 bit values
+    case splitPerChunk message of
+      []       -> return ()
+      (bs:[])  -> send (X.Display display_ptr) event_ptr bs
+      (bs:bss) -> do
+        send (X.Display display_ptr) event_ptr bs
 
-  case splitPerChunk message of
-    []       -> return ()
-    (bs:[])  -> send p_event bs
-    (bs:bss) -> do
-      send p_event bs
+        #{poke XClientMessageEvent, message_type} event_ptr $ skypeMessageContinueAtom api
 
-      #{poke XClientMessageEvent, message_type} p_event $ skypeMessageContinueAtom api
-
-      mapM_ (send p_event) bss
+        mapM_ (send (X.Display display_ptr) event_ptr) bss
 
   where
-    send p_event chunk = do
-      let p_data = #{ptr XClientMessageEvent, data} p_event
+    send display event_ptr chunk = do
+      let data_ptr = #{ptr XClientMessageEvent, data} event_ptr
 
-      BS.unsafeUseAsCStringLen chunk $ uncurry $ copyArray p_data
+      BS.unsafeUseAsCStringLen chunk $ uncurry $ copyArray data_ptr
 
-      let display = skypeDisplay api
-
-      X.sendEvent display (skypeInstanceWindow api) False 0 p_event
+      X.sendEvent display (skypeInstanceWindow api) False 0 event_ptr
       X.flush display
 
     splitPerChunk bs
@@ -204,6 +189,11 @@ sendTo api message = X.allocaXEvent $ \p_event -> do
       | BS.length bs < messageChunkSize  = BS.snoc bs 0 : []
       | otherwise                        = let (xs, ys) = BS.splitAt messageChunkSize bs
                                            in  xs : splitPerChunk ys
+
+-- | Generalized version of 'withForeignPtr'.
+withForeignPtr' :: (MonadBaseControl IO m) => ForeignPtr a -> (Ptr a -> m b) -> m b
+withForeignPtr' foreign_ptr action =
+  control $ \runInIO -> withForeignPtr foreign_ptr $ runInIO . action
 
 ptrIndex :: (Eq a, Storable a) => Ptr a -> a -> Int -> IO (Maybe Int)
 ptrIndex p x n = go 0 x $ take n $ iterate (flip plusPtr 1) p
@@ -220,35 +210,37 @@ messageChunkSize = #{const sizeof(((XClientMessageEvent *) 0)->data.b) / sizeof(
 {-# INLINE messageChunkSize #-}
 
 runEventLoop :: SkypeAPI -> (BL.ByteString -> IO ()) -> IO ()
-runEventLoop api action = X.allocaXEvent $ loop mempty
+runEventLoop api action =
+  X.allocaXEvent $ \event_ptr ->
+  withForeignPtr (skypeDisplay api) $ \display_ptr ->
+  loop mempty (X.Display display_ptr) event_ptr
   where
-    loop :: BS.Builder -> X.XEventPtr -> IO ()
-    loop builder p_event = do
-      X.nextEvent (skypeDisplay api) p_event  -- will blocking
+    loop builder display event_ptr = do
+      X.nextEvent display event_ptr  -- will blocking
 
-      eventType <- #{peek XClientMessageEvent, type} p_event
+      eventType <- #{peek XClientMessageEvent, type} event_ptr
 
       if eventType == X.clientMessage
       then do
-        messageType <- #{peek XClientMessageEvent, message_type} p_event
+        messageType <- #{peek XClientMessageEvent, message_type} event_ptr
 
         if messageType == skypeMessageBeginAtom api ||
            messageType == skypeMessageContinueAtom api
         then do
-          let p_data = #{ptr XClientMessageEvent, data} p_event
+          let data_ptr = #{ptr XClientMessageEvent, data} event_ptr
 
-          maybeIndex <- ptrIndex p_data (0 :: CChar) messageChunkSize
+          maybeIndex <- ptrIndex data_ptr (0 :: CChar) messageChunkSize
 
           case maybeIndex of
             Just i -> do
-              bs <- BS.packCStringLen (p_data, i)
+              bs <- BS.packCStringLen (data_ptr, i)
               action $ BS.toLazyByteString $ builder `mappend` BS.byteString bs
-              loop mempty p_event
+              loop mempty display event_ptr
 
             Nothing -> do
-              bs <- BS.packCStringLen (p_data, messageChunkSize)
-              loop (builder `mappend` BS.byteString bs) p_event
+              bs <- BS.packCStringLen (data_ptr, messageChunkSize)
+              loop (builder `mappend` BS.byteString bs) display event_ptr
         else
-          loop builder p_event
+          loop builder display event_ptr
       else
-        loop builder p_event
+        loop builder display event_ptr
