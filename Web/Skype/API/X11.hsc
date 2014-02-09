@@ -8,15 +8,15 @@ module Web.Skype.API.X11 (
 #include <X11/Xlib.h>
 
 import Control.Concurrent (ThreadId, forkIO, killThread)
-import Control.Concurrent.STM.TChan (TChan, dupTChan, newBroadcastTChanIO, readTChan, writeTChan)
+import Control.Concurrent.STM.TChan (TChan, newBroadcastTChanIO, writeTChan)
 import Control.Exception (IOException)
 import Control.Exception.Lifted (catch)
 import Control.Monad (mplus)
 import Control.Monad.Error (Error, runErrorT, strMsg)
 import Control.Monad.Error.Class (MonadError, catchError, throwError)
-import Control.Monad.Reader (MonadReader(..), ReaderT, asks, runReaderT)
+import Control.Monad.Reader (MonadReader(..), ReaderT, asks)
 import Control.Monad.STM (atomically)
-import Control.Monad.Trans (MonadTrans, MonadIO, liftIO)
+import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Bits ((.&.))
 import Data.Maybe (listToMaybe)
@@ -38,8 +38,8 @@ import qualified Graphics.X11.Xlib as X
 import qualified Graphics.X11.Xlib.Extras as X
 
 data SkypeConnection = SkypeConnection
-  { skypeApi :: SkypeAPI
-  , skypeChannel :: SkypeChannel
+  { skypeAPI :: SkypeAPI
+  , skypeNotificaton :: TChan Notification
   , skypeThread :: ThreadId
   }
 
@@ -53,9 +53,9 @@ data SkypeAPI = SkypeAPI
   deriving (Show, Eq)
 
 instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
-  sendCommand command = asks skypeApi >>= liftIO . flip sendTo command
+  sendCommand command = asks skypeAPI >>= liftIO . flip sendTo command
 
-  getSkypeChannel = asks skypeChannel
+  getNotification = asks skypeNotificaton
 
 openDisplay :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
             => String -> m X.Display
@@ -111,8 +111,8 @@ connectTo address = do
   thread <- liftIO $ forkIO $ runEventLoop api $ atomically . writeTChan chan
 
   let connection = SkypeConnection
-                   { skypeApi = api
-                   , skypeChannel = chan
+                   { skypeAPI = api
+                   , skypeNotificaton = chan
                    , skypeThread = thread
                    }
 
@@ -128,7 +128,7 @@ disconnect :: (MonadIO m) => SkypeConnection -> m ()
 disconnect connection = liftIO $ do
   killThread $ skypeThread connection
 
-  let api = skypeApi connection
+  let api = skypeAPI connection
   let display = skypeDisplay api
   let window = skypeWindow api
 

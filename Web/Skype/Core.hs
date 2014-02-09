@@ -2,12 +2,12 @@ module Web.Skype.Core (
   Command,
   CommandID,
   MonadSkype(..),
-  SkypeT,
-  SkypeChannel,
+  Notification,
   SkypeConfig(..),
   SkypeError(..),
+  SkypeT,
   defaultConfig,
-  dupSkypeChannel,
+  dupNotification,
   runSkype
 ) where
 
@@ -31,15 +31,15 @@ import qualified Data.Text as T
 type Command = BS.ByteString
 type CommandID = BS.ByteString
 
-type SkypeChannel = TChan BL.ByteString
+type Notification = BL.ByteString
 
 -- | Provides the DSL for Skype API.
 class (Monad m) => MonadSkype m where
   -- | Sends the command message to the Skype instance.
   sendCommand :: Command -> m ()
 
-  -- | Gets the message channel of Skype from the event loop.
-  getSkypeChannel :: m SkypeChannel
+  -- | Gets the notification channel of Skype from the event loop.
+  getNotification :: m (TChan Notification)
 
 newtype SkypeT m a = SkypeT (ErrorT SkypeError (ReaderT SkypeConfig m) a)
   deriving ( Applicative
@@ -73,7 +73,7 @@ instance MonadBaseControl base m => MonadBaseControl base (SkypeT m) where
 instance MonadSkype m => MonadSkype (SkypeT m) where
   sendCommand = lift . sendCommand
 
-  getSkypeChannel = lift getSkypeChannel
+  getNotification = lift getNotification
 
 data SkypeConfig = SkypeConfig
   { skypeTimeout :: Int }
@@ -99,5 +99,5 @@ runSkype :: connection
 runSkype connection config (SkypeT skype) =
   runReaderT (runReaderT (runErrorT skype) config) connection
 
-dupSkypeChannel :: (MonadIO m, MonadSkype m) => m SkypeChannel
-dupSkypeChannel = getSkypeChannel >>= liftIO . atomically . dupTChan
+dupNotification :: (MonadIO m, MonadSkype m) => m (TChan Notification)
+dupNotification = getNotification >>= liftIO . atomically . dupTChan
