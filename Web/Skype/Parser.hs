@@ -336,7 +336,13 @@ p_user = User <$> (string "USER" *> spaces *> p_userID <* spaces)
 p_userID :: Parser UserID
 p_userID = takeWhile1 isSymbol
   where
-    isSymbol c = any ($ c) [isAlpha, isDigit, (==) _underscore, (==) _hyphen]
+    isSymbol c = any ($ c)
+      [ isAlpha
+      , isDigit
+      , (==) _underscore
+      , (==) _hyphen
+      , (==) _period
+      ]
 
 p_userProperty :: Parser UserProperty
 p_userProperty = choice
