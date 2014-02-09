@@ -123,9 +123,7 @@ connectTo address = do
                    , skypeThread = thread
                    }
 
-  result <- runSkype connection $ do
-    liftIO getProgName >>= name . BC.pack
-    protocol 9999
+  result <- runSkype connection $ liftIO getProgName >>= name . BC.pack
 
   either (throwError . strMsg . show) (const $ return connection) result
 
