@@ -72,9 +72,9 @@ newConnection = do
   addObserver center "SKSkypeAPINotification" $ notificationCallback clientIDVar notificatonChan
   addObserver center "SKSkypeAttachResponse" $ attachResponseCallback clientIDVar clientName
 
-  attachTo center clientName
-
   threadID <- forkIO $ c_RunCurrentEventLoop eventDurationForever
+
+  attachTo center clientName
 
   return SkypeConnection
     { skypeClientID = clientIDVar
