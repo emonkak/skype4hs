@@ -1,7 +1,6 @@
 module Web.Skype.API.Carbon (
   SkypeConnection,
-  connect,
-  disconnect
+  connect
 ) where
 
 import Control.Applicative
@@ -15,7 +14,8 @@ import Control.Monad.Reader (ReaderT, asks)
 import Control.Monad.STM (atomically)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Maybe
-import Foreign
+import Foreign hiding (addForeignPtrFinalizer)
+import Foreign.Concurrent (addForeignPtrFinalizer)
 import Foreign.C.Types
 import System.Environment (getProgName)
 import Web.Skype.API.Carbon.CFBase
@@ -55,14 +55,19 @@ connect = do
 
   when (clientID <= 0) $ throwError $ strMsg "Couldn't connect to Skype client."
 
+  liftIO $ addForeignPtrFinalizer
+    (getNotificationCenter $ skypeNotificationCenter connection)
+    (disconnectFrom (skypeNotificationCenter connection) clientID)
+
   return connection
 
 newConnection :: IO SkypeConnection
 newConnection = do
-  center <- getDistributedCenter
   clientName <- getProgName >>= newCFString >>= newForeignPtr p_CFRelease
   clientIDVar <- newEmptyTMVarIO
   notificatonChan <- newBroadcastTChanIO
+
+  center <- getDistributedCenter clientName
 
   addObserver center "SKSkypeAPINotification" $ notificationCallback clientIDVar notificatonChan
   addObserver center "SKSkypeAttachResponse" $ attachResponseCallback clientIDVar clientName
@@ -78,16 +83,9 @@ newConnection = do
     , skypeThread = threadID
     }
 
-disconnect :: SkypeConnection -> IO ()
-disconnect connection = do
-  maybeClientID <- atomically $ tryReadTMVar $ skypeClientID connection
-  maybe (return ())
-        (disconnectFrom $ skypeNotificationCenter connection)
-        maybeClientID
-
 disconnectFrom :: NotificationCenter -> ClientID -> IO ()
-disconnectFrom (NotificationCenter center _) clientID =
-  withForeignPtr center $ \center_ptr ->
+disconnectFrom center clientID =
+  withNotificationCenter center $ \center_ptr ->
   withCFNumber clientID $ \clientID_ptr -> do
     userInfo <- newCFDictionary
       [ ("SKYPE_API_CLIENT_ID" :: CFStringRef, castPtr clientID_ptr) ]
@@ -102,8 +100,8 @@ disconnectFrom (NotificationCenter center _) clientID =
     c_CFRelease userInfo
 
 attachTo :: NotificationCenter -> ForeignPtr ClientName -> IO ()
-attachTo (NotificationCenter center _) clientName =
-  withForeignPtr center $ \center_ptr ->
+attachTo center clientName =
+  withNotificationCenter center $ \center_ptr ->
   withForeignPtr clientName $ \clientName_ptr ->
     c_CFNotificationCenterPostNotification
       center_ptr
@@ -113,8 +111,8 @@ attachTo (NotificationCenter center _) clientName =
       True
 
 sendTo :: NotificationCenter -> ClientID -> Command -> IO ()
-sendTo (NotificationCenter center _) clientID command =
-  withForeignPtr center $ \center_ptr ->
+sendTo center clientID command =
+  withNotificationCenter center $ \center_ptr ->
   withCFString command $ \command_ptr ->
   withCFNumber clientID $ \clientID_ptr -> do
     userInfo <- newCFDictionary

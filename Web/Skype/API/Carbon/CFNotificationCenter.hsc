@@ -10,31 +10,36 @@ import Foreign.Concurrent
 import Web.Skype.API.Carbon.CFDictionary
 import Web.Skype.API.Carbon.CFString
 
-data NotificationCenter =
-  forall a.
-  NotificationCenter (ForeignPtr CFNotificationCenter)
-                     (IORef [FunPtr a])
+data NotificationCenter = forall callback observer. NotificationCenter
+  { getNotificationCenter :: ForeignPtr CFNotificationCenter
+  , getCallbacks :: IORef [FunPtr callback]
+  , getObserver :: ForeignPtr observer
+  }
 
-getDistributedCenter :: IO NotificationCenter
-getDistributedCenter = do
+withNotificationCenter :: NotificationCenter -> (CFNotificationCenterRef -> IO a) -> IO a
+withNotificationCenter (NotificationCenter center _ _) action =
+  withForeignPtr center action
+
+getDistributedCenter :: ForeignPtr a -> IO NotificationCenter
+getDistributedCenter observer = do
   callbacks <- newIORef []
   center_ptr <- c_CFNotificationCenterGetDistributedCenter
   center <- newForeignPtr center_ptr $ do
-    c_CFNotificationCenterRemoveEveryObserver center_ptr nullPtr
+    withForeignPtr observer $ c_CFNotificationCenterRemoveEveryObserver center_ptr
     readIORef callbacks >>= mapM_ freeHaskellFunPtr
-    print "free memory"
-  return $ NotificationCenter center callbacks
+  return $ NotificationCenter center callbacks observer
 
 addObserver :: NotificationCenter
             -> CFStringRef
             -> CFNotificationCallback observer object key value
             -> IO ()
-addObserver (NotificationCenter center callbacks) name callback =
-  withForeignPtr center $ \center_ptr -> do
+addObserver (NotificationCenter center callbacks observer) name callback =
+  withForeignPtr center $ \center_ptr ->
+  withForeignPtr observer $ \observer_ptr -> do
     callback_ptr <- wrapCFNotificationCallback callback
     c_CFNotificationCenterAddObserver
       center_ptr
-      nullPtr
+      (castPtr observer_ptr)
       callback_ptr
       name
       nullPtr
