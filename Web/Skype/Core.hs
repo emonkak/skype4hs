@@ -8,7 +8,8 @@ module Web.Skype.Core (
   SkypeT,
   defaultConfig,
   dupNotification,
-  runSkype
+  runSkype,
+  runSkypeWith
 ) where
 
 import Control.Applicative (Applicative)
@@ -41,7 +42,9 @@ class (Monad m) => MonadSkype m where
   -- | Gets the notification channel of Skype from the event loop.
   getNotification :: m (TChan Notification)
 
-newtype SkypeT m a = SkypeT (ErrorT SkypeError (ReaderT SkypeConfig m) a)
+newtype SkypeT m a = SkypeT
+  { runSkypeT :: ErrorT SkypeError (ReaderT SkypeConfig m) a
+  }
   deriving ( Applicative
            , Functor
            , Monad
@@ -58,8 +61,8 @@ instance MonadTransControl SkypeT where
   newtype StT SkypeT a = StSkype { unStSkype :: Either SkypeError a }
 
   liftWith f = SkypeT . ErrorT . ReaderT $ \r ->
-    liftM Right $ f $ \(SkypeT t) ->
-      liftM StSkype $ runReaderT (runErrorT t) r
+    liftM Right $ f $ \t ->
+      liftM StSkype $ runReaderT (runErrorT (runSkypeT t)) r
 
   restoreT = SkypeT . ErrorT . ReaderT . const . liftM unStSkype
 
@@ -92,12 +95,19 @@ instance Error SkypeError where
   noMsg = SkypeError 0 "" ""
   strMsg = SkypeError 0 "" . fromString
 
-runSkype :: connection
-         -> SkypeConfig
+runSkype :: (Monad m, MonadSkype (ReaderT connection m))
+         => connection
          -> SkypeT (ReaderT connection m) a
          -> m (Either SkypeError a)
-runSkype connection config (SkypeT skype) =
-  runReaderT (runReaderT (runErrorT skype) config) connection
+runSkype connection = runSkypeWith connection defaultConfig
+
+runSkypeWith :: (Monad m, MonadSkype (ReaderT connection m))
+              => connection
+              -> SkypeConfig
+              -> SkypeT (ReaderT connection m) a
+              -> m (Either SkypeError a)
+runSkypeWith connection config skype =
+  runReaderT (runReaderT (runErrorT (runSkypeT skype)) config) connection
 
 dupNotification :: (MonadIO m, MonadSkype m) => m (TChan Notification)
 dupNotification = getNotification >>= liftIO . atomically . dupTChan
