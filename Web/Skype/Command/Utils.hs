@@ -28,8 +28,8 @@ executeCommand :: (MonadIO m, MonadSkype m)
                -> SkypeT m a
 executeCommand command handler = handleCommand command $ \response ->
   case parseResponse response of
-    Just result -> handler result
-    Nothing     -> Nothing
+    Right result -> handler result
+    Left _       -> Nothing
 
 executeCommandWithID :: (MonadIO m, MonadSkype m)
                      => Command

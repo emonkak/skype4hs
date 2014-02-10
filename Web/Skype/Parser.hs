@@ -44,8 +44,8 @@ data SkypeResponse
   | User UserID UserProperty
   deriving (Eq, Show)
 
-parseResponse :: BL.ByteString -> Maybe SkypeResponse
-parseResponse = maybeResult . parse p_response
+parseResponse :: BL.ByteString -> Either String SkypeResponse
+parseResponse = eitherResult . parse p_response
 
 parseResponseWithCommandID :: BL.ByteString -> Maybe (CommandID, SkypeResponse)
 parseResponseWithCommandID = maybeResult . parse p_responseWithCommandID
