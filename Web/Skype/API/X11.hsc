@@ -64,9 +64,6 @@ openDisplay address = do
   display'@(X.Display display) <- liftIO (X.openDisplay address) `catch` throwError
   liftIO $ newForeignPtr display $ X.closeDisplay display'
 
-foreign import ccall unsafe "&XCloseDisplay"
-  p_XCloseDisplay :: FunPtr (Ptr X.Display -> IO ())
-
 getDisplayAddress :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
                   => m String
 getDisplayAddress = liftIO (getEnv "SKYPEDISPLAY" `mplus` getEnv "DISPLAY")
@@ -165,15 +162,17 @@ sendTo api message =
     #{poke XClientMessageEvent, message_type} event_ptr $ skypeMessageBeginAtom api
     #{poke XClientMessageEvent, format}       event_ptr (8 :: CInt)  -- 8 bit values
 
+    let display = X.Display display_ptr
+
     case splitPerChunk message of
       []       -> return ()
-      (bs:[])  -> send (X.Display display_ptr) event_ptr bs
+      (bs:[])  -> send display event_ptr bs
       (bs:bss) -> do
-        send (X.Display display_ptr) event_ptr bs
+        send display event_ptr bs
 
         #{poke XClientMessageEvent, message_type} event_ptr $ skypeMessageContinueAtom api
 
-        mapM_ (send (X.Display display_ptr) event_ptr) bss
+        mapM_ (send display event_ptr) bss
 
   where
     send display event_ptr chunk = do
@@ -192,8 +191,8 @@ sendTo api message =
 
 -- | Generalized version of 'withForeignPtr'.
 withForeignPtr' :: (MonadBaseControl IO m) => ForeignPtr a -> (Ptr a -> m b) -> m b
-withForeignPtr' foreign_ptr action =
-  control $ \runInIO -> withForeignPtr foreign_ptr $ runInIO . action
+withForeignPtr' fp action =
+  control $ \runInIO -> withForeignPtr fp $ runInIO . action
 
 ptrIndex :: (Eq a, Storable a) => Ptr a -> a -> Int -> IO (Maybe Int)
 ptrIndex p x n = go 0 x $ take n $ iterate (flip plusPtr 1) p
