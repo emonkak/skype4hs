@@ -102,10 +102,10 @@ runSkype :: (Monad m, MonadSkype (ReaderT connection m))
 runSkype connection = runSkypeWith connection defaultConfig
 
 runSkypeWith :: (Monad m, MonadSkype (ReaderT connection m))
-              => connection
-              -> SkypeConfig
-              -> SkypeT (ReaderT connection m) a
-              -> m (Either SkypeError a)
+             => connection
+             -> SkypeConfig
+             -> SkypeT (ReaderT connection m) a
+             -> m (Either SkypeError a)
 runSkypeWith connection config skype =
   runReaderT (runReaderT (runErrorT (runSkypeT skype)) config) connection
 
