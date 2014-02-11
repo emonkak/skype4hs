@@ -40,6 +40,17 @@ data UserSex = UserSexUnknown
              | UserSexFemale
   deriving (Eq, Show)
 
+data UserStatus = UserStatusUnknown    -- | no status information for current user.
+                | UserStatusOnline     -- | current user is online.
+                | UserStatusOffline    -- | current user is offline.
+                | UserStatusSkypeMe    -- | current user is in "Skype Me" mode (Protocol 2).
+                | UserStatusAway       -- | current user is away.
+                | UserStatusNA         -- | current user is not available.
+                | UserStatusDND        -- | current user is in "Do not disturb" mode.
+                | UserStatusInvisible  -- | current user is invisible to others.
+                | UserStatusLoggedOut  -- | current user is logged out. Clients are detached.
+  deriving (Eq, Show)
+
 data UserBuddyStatus = UserBuddyStatusNeverBeen
                      | UserBuddyStatusDeleted
                      | UserBuddyStatusPending

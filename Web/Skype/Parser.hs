@@ -42,6 +42,7 @@ data SkypeResponse
   | OpenChat ChatID
   | Protocol ProtocolVersion
   | User UserID UserProperty
+  | UserStatus UserStatus
   deriving (Eq, Show)
 
 parseResponse :: BL.ByteString -> Either String SkypeResponse
@@ -61,6 +62,7 @@ p_response = choice
   , p_open
   , p_protocol
   , p_user
+  , p_userStatus
   ]
 
 p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
@@ -395,6 +397,21 @@ p_userSex = choice
   , UserSexMale    <$ string "MALE"
   , UserSexFemale  <$ string "FEMALE"
   ]
+
+p_userStatus :: Parser SkypeResponse
+p_userStatus = UserStatus <$> (string "USERSTATUS" *> spaces *> p_status)
+  where
+    p_status = choice
+      [ UserStatusUnknown   <$ string "UNKNOWN"
+      , UserStatusOnline    <$ string "ONLINE"
+      , UserStatusOffline   <$ string "OFFLINE"
+      , UserStatusSkypeMe   <$ string "SKYPEME"
+      , UserStatusAway      <$ string "AWAY"
+      , UserStatusNA        <$ string "NA"
+      , UserStatusDND       <$ string "DND"
+      , UserStatusInvisible <$ string "INVISIBLE"
+      , UserStatusLoggedOut <$ string "LOGGEDOUT"
+      ]
 
 p_userLanguage :: Parser (UserLanguagePrefix, UserLanguage)
 p_userLanguage = (,) <$> (tokens <* spaces) <*> tokens
