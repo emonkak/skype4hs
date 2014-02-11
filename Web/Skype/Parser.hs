@@ -43,6 +43,7 @@ data SkypeResponse
   | Protocol ProtocolVersion
   | User UserID UserProperty
   | UserStatus UserStatus
+  | CurrentUserHandle UserID
   deriving (Eq, Show)
 
 parseResponse :: BL.ByteString -> Either String SkypeResponse
@@ -63,6 +64,7 @@ p_response = choice
   , p_protocol
   , p_user
   , p_userStatus
+  , p_currentUserHandle
   ]
 
 p_responseWithCommandID :: Parser (CommandID, SkypeResponse)
@@ -473,6 +475,10 @@ p_userTimezoneOffset = CTime <$> decimal
 
 p_userDisplayName :: Parser UserDisplayName
 p_userDisplayName = takeText
+
+p_currentUserHandle :: Parser SkypeResponse
+p_currentUserHandle = CurrentUserHandle <$>
+                      (string "CURRENTUSERHANDLE" *> spaces *> p_userID)
 
 -- * Internal Utilities
 -----------------------
