@@ -1,5 +1,7 @@
 module Web.Skype.Parser (
   SkypeResponse(..),
+  AlterObject(..),
+  AlterChatProperty(..),
   parseResponse,
   parseResponseWithCommandID
 ) where
@@ -21,29 +23,34 @@ import qualified Data.Text.Encoding as T
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
-data SkypeResponse
-  = AlterChatAcceptAdd
-  | AlterChatAddMembers
-  | AlterChatBookmarked Bool
-  | AlterChatClearRecentMessages
-  | AlterChatDisband
-  | AlterChatEnterPassword
-  | AlterChatJoin
-  | AlterChatLeave
-  | AlterChatSetAlertString
-  | AlterChatSetOptions
-  | AlterChatSetPassword
-  | AlterChatSetTopic
-  | Chat ChatID ChatProperty
-  | Chats [ChatID]
-  | ChatMessage ChatMessageID ChatMessageProperty
-  | ConnectionStatus ConnectionStatus
-  | Error ErrorCode ErrorDescription
-  | OpenChat ChatID
-  | Protocol ProtocolVersion
-  | User UserID UserProperty
-  | UserStatus UserStatus
-  | CurrentUserHandle UserID
+data SkypeResponse = Alter AlterObject
+                   | Chat ChatID ChatProperty
+                   | Chats [ChatID]
+                   | ChatMessage ChatMessageID ChatMessageProperty
+                   | ConnectionStatus ConnectionStatus
+                   | Error ErrorCode ErrorDescription
+                   | OpenChat ChatID
+                   | Protocol ProtocolVersion
+                   | User UserID UserProperty
+                   | UserStatus UserStatus
+                   | CurrentUserHandle UserID
+  deriving (Eq, Show)
+
+data AlterObject = AlterChat AlterChatProperty
+  deriving (Eq, Show)
+
+data AlterChatProperty = AlterChatAcceptAdd
+                       | AlterChatAddMembers
+                       | AlterChatBookmarked Bool
+                       | AlterChatClearRecentMessages
+                       | AlterChatDisband
+                       | AlterChatEnterPassword
+                       | AlterChatJoin
+                       | AlterChatLeave
+                       | AlterChatSetAlertString
+                       | AlterChatSetOptions
+                       | AlterChatSetPassword
+                       | AlterChatSetTopic
   deriving (Eq, Show)
 
 parseResponse :: BL.ByteString -> Either String SkypeResponse
@@ -76,10 +83,13 @@ p_responseWithCommandID = (,) <$> (p_commandID <* spaces) <*> p_response
 ----------
 
 p_alter :: Parser SkypeResponse
-p_alter = string "ALTER" *> spaces *> choice
-  [ p_chat ]
+p_alter = Alter <$> (string "ALTER" *> spaces *> p_objects)
   where
-    p_chat = string "CHAT" *> spaces *> choice
+    p_objects = choice
+      [ AlterChat <$> (string "CHAT" *> spaces *> p_chatProperties)
+      ]
+
+    p_chatProperties = choice
       [ AlterChatAcceptAdd           <$  (string "ACCEPTADD")
       , AlterChatAddMembers          <$  (string "ADDMEMBERS")
       , AlterChatBookmarked          <$> (string "BOOKMARKED" *> p_boolean)
