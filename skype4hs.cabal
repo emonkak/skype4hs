@@ -33,7 +33,8 @@ library
     include-dirs:      /usr/X11/include
     extra-lib-dirs:    /usr/X11/lib
 
-  exposed-modules:     Web.Skype.Command.Chat,
+  exposed-modules:     Web.Skype.API,
+                       Web.Skype.Command.Chat,
                        Web.Skype.Command.ChatMessage,
                        Web.Skype.Command.Misc,
                        Web.Skype.Command.Utils,
