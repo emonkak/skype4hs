@@ -113,7 +113,19 @@ p_chat = string "CHAT"
       *> (Chat <$> (p_chatID <* spaces) <*> p_chatProperty)
 
 p_chatID :: Parser ChatID
-p_chatID = takeWhile1 $ not . isSpace
+p_chatID = takeWhile1 $ isSymbol
+  where
+    isSymbol c = any ($ c)
+      [ isAlpha
+      , isDigit
+      , (==) _numbersign
+      , (==) _dollar
+      , (==) _hyphen
+      , (==) _period
+      , (==) _slash
+      , (==) _underscore
+      , (==) _semicolon
+      ]
 
 p_chatProperty :: Parser ChatProperty
 p_chatProperty = choice
@@ -353,7 +365,7 @@ p_userID = takeWhile1 isSymbol
     isSymbol c = any ($ c)
       [ isAlpha
       , isDigit
-      , (==) _underscore
+      , (==) _numbersign
       , (==) _hyphen
       , (==) _period
       ]
