@@ -30,9 +30,9 @@ import Web.Skype.Command.Misc (name, protocol)
 import Web.Skype.Core
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Builder as BS
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Builder as BS
 import qualified Data.ByteString.Unsafe as BS
 import qualified Graphics.X11.Xlib as X
 import qualified Graphics.X11.Xlib.Extras as X
