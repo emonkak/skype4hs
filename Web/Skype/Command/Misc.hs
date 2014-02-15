@@ -19,8 +19,8 @@ name :: (MonadIO m, MonadSkype m) => BS.ByteString -> SkypeT m ()
 name clientName = handleCommand command $ \response ->
   case response of
     "OK"                 -> Just $ Right ()
-    "CONNSTATUS OFFLINE" -> Just $ Left $ strMsg "Skype is offline"
-    "ERROR 68"           -> Just $ Left $ strMsg "Connection refused"
+    "CONNSTATUS OFFLINE" -> Just $ Left $ SkypeError 0 command "Skype is offline"
+    "ERROR 68"           -> Just $ Left $ SkypeError 0 command "Connection refused"
     otherwise            -> Nothing
   where
     command = "NAME " <> clientName
