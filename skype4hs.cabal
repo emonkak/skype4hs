@@ -37,6 +37,7 @@ library
                        Web.Skype.Command.Chat,
                        Web.Skype.Command.ChatMessage,
                        Web.Skype.Command.Misc,
+                       Web.Skype.Command.User,
                        Web.Skype.Command.Utils,
                        Web.Skype.Core,
                        Web.Skype.Parser,
