@@ -28,9 +28,7 @@ import Control.Monad.Trans (MonadIO)
 import Data.Monoid ((<>))
 import Web.Skype.Command.Utils
 import Web.Skype.Core
-import Web.Skype.Parser
-import Web.Skype.Protocol.Chat
-import Web.Skype.Protocol.Types
+import Web.Skype.Protocol
 
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.Text.Encoding as T
@@ -39,9 +37,9 @@ import qualified Data.Text.Encoding as T
 setTopic :: (MonadIO m, MonadSkype m) => ChatID -> ChatTopic -> SkypeT m ()
 setTopic chatID chatTopic = executeCommandWithID command $ \response ->
   case response of
-    Alter (AlterChat AlterChatSetTopic) -> Just $ Right ()
-    Error code description              -> Just $ Left $ SkypeError code command description
-    _                                   -> Nothing
+    AlterChat AlterChatSetTopic -> Just $ Right ()
+    Error code description      -> Just $ Left $ SkypeError code command description
+    _                           -> Nothing
   where
     command = "ALTER CHAT " <> chatID
                             <> " SETTOPIC "
@@ -52,9 +50,9 @@ addMembers :: (MonadIO m, MonadSkype m) => ChatID -> [UserID] -> SkypeT m ()
 addMembers _ [] = return ()
 addMembers chatID userIDs = executeCommandWithID command $ \response ->
   case response of
-    Alter (AlterChat AlterChatAddMembers) -> Just $ Right ()
-    Error code description                -> Just $ Left $ SkypeError code command description
-    _                                     -> Nothing
+    AlterChat AlterChatAddMembers -> Just $ Right ()
+    Error code description        -> Just $ Left $ SkypeError code command description
+    _                             -> Nothing
   where
     command = "ALTER CHAT " <> chatID
                             <> " ADDMEMBERS "
@@ -64,9 +62,9 @@ addMembers chatID userIDs = executeCommandWithID command $ \response ->
 joinChat :: (MonadIO m, MonadSkype m) => ChatID -> SkypeT m ()
 joinChat chatID = executeCommandWithID command $ \response ->
   case response of
-    Alter (AlterChat AlterChatJoin) -> Just $ Right ()
-    Error code description          -> Just $ Left $ SkypeError code command description
-    _                               -> Nothing
+    AlterChat AlterChatJoin -> Just $ Right ()
+    Error code description  -> Just $ Left $ SkypeError code command description
+    _                       -> Nothing
   where
     command = "ALTER CHAT " <> chatID <> " JOIN"
 
@@ -74,9 +72,9 @@ joinChat chatID = executeCommandWithID command $ \response ->
 leaveChat :: (MonadIO m, MonadSkype m) => ChatID -> SkypeT m ()
 leaveChat chatID = executeCommandWithID command $ \response ->
   case response of
-    Alter (AlterChat AlterChatLeave) -> Just $ Right ()
-    Error code description           -> Just $ Left $ SkypeError code command description
-    _                                -> Nothing
+    AlterChat AlterChatLeave -> Just $ Right ()
+    Error code description   -> Just $ Left $ SkypeError code command description
+    _                        -> Nothing
   where
     command = "ALTER CHAT " <> chatID <> " LEAVE"
 

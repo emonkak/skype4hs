@@ -1,7 +1,25 @@
 module Web.Skype.Protocol.Chat where
 
+import Control.Applicative
+import Data.Attoparsec.ByteString.Char8 (decimal)
+import Data.Attoparsec.ByteString.Lazy
 import Data.Bits (Bits)
+import Data.Word8
 import Web.Skype.Protocol.Types
+
+data AlterChatProperty = AlterChatAcceptAdd
+                       | AlterChatAddMembers
+                       | AlterChatBookmarked Bool
+                       | AlterChatClearRecentMessages
+                       | AlterChatDisband
+                       | AlterChatEnterPassword
+                       | AlterChatJoin
+                       | AlterChatLeave
+                       | AlterChatSetAlertString
+                       | AlterChatSetOptions
+                       | AlterChatSetPassword
+                       | AlterChatSetTopic
+  deriving (Eq, Show)
 
 data ChatProperty
   -- | Chat ID
@@ -223,3 +241,104 @@ data ChatRole
   -- to applicants once they have been accepted.
   | ChatRoleApplicant
   deriving (Eq, Show)
+
+p_chatProperty :: Parser ChatProperty
+p_chatProperty = choice
+  [ ChatName              <$> (property "NAME" *> p_chatID)
+  , ChatTimestamp         <$> (property "TIMESTAMP" *> p_timestamp)
+  , ChatAdder             <$> (property "ADDER" *> p_userID)
+  , ChatStatus            <$> (property "STATUS" *> p_chatStatus)
+  , ChatPosters           <$> (property "POSTERS" *> p_userIDs)
+  , ChatMembers           <$> (property "MEMBERS" *> p_userIDs)
+  , ChatTopic             <$> (property "TOPIC" *> p_chatTopic)
+  , ChatTopicXml          <$> (property "TOPICXML" *> p_chatTopic)
+  , ChatActiveMembers     <$> (property "ACTIVEMEMBERS" *> p_userIDs)
+  , ChatFriendyName       <$> (property "FRIENDLYNAME" *> p_chatWindowTitle)
+  , ChatMessages          <$> (property "CHATMESSAGES" *> p_chatMessages)
+  , ChatRecentMessages    <$> (property "RECENTCHATMESSAGES" *> p_chatMessages)
+  , ChatBookmarked        <$> (property "BOOKMARKED" *> p_boolean)
+  , ChatMemberObjects     <$> (property "MEMBEROBJECTS" *> p_chatMemberObjects)
+  , ChatPasswordHint      <$> (property "PASSWORDHINT" *> p_chatPasswordHint)
+  , ChatGuidelines        <$> (property "GUIDELINES" *> p_chatGuidelines)
+  , ChatOptions           <$> (property "OPTIONS" *> p_chatOptions)
+  , ChatDescription       <$> (property "DESCRIPTION" *> p_chatDescription)
+  , ChatDialogPartner     <$> (property "DIALOG_PARTNER" *> p_userID)
+  , ChatActivityTimestamp <$> (property "ACTIVITY_TIMESTAMP" *> p_timestamp)
+  , ChatType              <$> (property "TYPE" *> p_chatType)
+  , ChatMyStatus          <$> (property "MYSTATUS" *> p_chatMyStatus)
+  , ChatMyRole            <$> (property "MYROLE" *> p_chatRole)
+  , ChatBlob              <$> (property "BLOB" *> p_chatBlob)
+  , ChatApplicants        <$> (property "APPLICANTS" *> p_userIDs)
+  , ChatClosed            <$  (string "CLOSED" *> endOfInput)
+  , ChatOpened            <$  (string "OPENED" *> endOfInput)
+  ]
+  where
+    property prop = string prop *> spaces
+
+    p_userIDs = p_userID `sepBy` spaces
+
+    p_chatMessages = p_chatMessageID `sepBy` (word8 _comma *> spaces)
+
+    p_chatMemberObjects = p_chatMemberID `sepBy` (word8 _comma *> spaces)
+
+p_chatStatus :: Parser ChatStatus
+p_chatStatus = choice
+  [ ChatStatusLegacyDialog    <$ string "LEGACY_DIALOG"
+  , ChatStatusDialog          <$ string "DIALOG"
+  , ChatStatusMultiSubscribed <$ string "MULTI_SUBSCRIBED"
+  , ChatStatusUnsubscribed    <$ string "UNSUBSCRIBED"
+  ]
+
+p_chatOptions :: Parser ChatOption
+p_chatOptions = ChatOption <$> decimal
+
+p_chatType :: Parser ChatType
+p_chatType = choice
+  [ ChatTypeLegacyDialog       <$ string "LEGACY_DIALOG"
+  , ChatTypeDialog             <$ string "DIALOG"
+  , ChatTypeMultiChat          <$ string "MULTICHAT"
+  , ChatTypeSharedGroup        <$ string "SHAREDGROUP"
+  , ChatTypeLegacyUnsubscribed <$ string "LEGACY_UNSUBSCRIBED"
+  ]
+
+p_chatMyStatus :: Parser ChatMyStatus
+p_chatMyStatus = choice
+  [ ChatMyStatusConnecting              <$ string "CONNECTING"
+  , ChatMyStatusWaitingRemoteAccept     <$ string "WAITING_REMOTE_ACCEPT"
+  , ChatMyStatusAcceptRequired          <$ string "ACCEPT_REQUIRED"
+  , ChatMyStatusPasswordRequired        <$ string "PASSWORD_REQUIRED"
+  , ChatMyStatusSubscribed              <$ string "SUBSCRIBED"
+  , ChatMyStatusUnsubscribed            <$ string "UNSUBSCRIBED"
+  , ChatMyStatusDisbanded               <$ string "CHAT_DISBANDED"
+  , ChatMyStatusQueuedBecauseChatIsFull <$ string "QUEUED_BECAUSE_CHAT_IS_FULL"
+  , ChatMyStatusApplicationDenied       <$ string "APPLICATION_DENIED"
+  , ChatMyStatusKicked                  <$ string "KICKED"
+  , ChatMyStatusBanned                  <$ string "BANNED"
+  , ChatMyStatusRetryConnecting         <$ string "RETRY_CONNECTING"
+  ]
+
+p_chatRole :: Parser ChatRole
+p_chatRole = choice
+  [ ChatRoleCreator   <$ string "CREATOR"
+  , ChatRoleMaster    <$ string "MASTER"
+  , ChatRoleHelper    <$ string "HELPER"
+  , ChatRoleUser      <$ string "USER"
+  , ChatRoleListener  <$ string "LISTENER"
+  , ChatRoleApplicant <$ string "APPLICANT"
+  ]
+
+p_alterChatProperties :: Parser AlterChatProperty
+p_alterChatProperties = choice
+  [ AlterChatAcceptAdd           <$  (string "ACCEPTADD")
+  , AlterChatAddMembers          <$  (string "ADDMEMBERS")
+  , AlterChatBookmarked          <$> (string "BOOKMARKED" *> p_boolean)
+  , AlterChatClearRecentMessages <$  (string "CLEARRECENTMESSAGES")
+  , AlterChatDisband             <$  (string "DISBAND")
+  , AlterChatEnterPassword       <$  (string "ENTERPASSWORD")
+  , AlterChatJoin                <$  (string "JOIN")
+  , AlterChatLeave               <$  (string "LEAVE")
+  , AlterChatSetAlertString      <$  (string "SETALERTSTRING")
+  , AlterChatSetOptions          <$  (string "SETOPTIONS")
+  , AlterChatSetPassword         <$  (string "SETPASSWORD")
+  , AlterChatSetTopic            <$  (string "SETTOPIC")
+  ]

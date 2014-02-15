@@ -1,5 +1,4 @@
 module Web.Skype.Protocol.ChatMember where
 
-data ChatMemberProperty
-  = ChatMemberProperty
+data ChatMemberProperty = ChatMemberProperty
   deriving (Eq, Show)

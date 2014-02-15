@@ -6,9 +6,7 @@ import Control.Monad.Trans (MonadIO)
 import Data.Monoid ((<>))
 import Web.Skype.Command.Utils
 import Web.Skype.Core
-import Web.Skype.Parser
-import Web.Skype.Protocol.User
-import Web.Skype.Protocol.Types
+import Web.Skype.Protocol
 
 import qualified Data.ByteString as BS
 

@@ -15,7 +15,7 @@ import Data.Monoid ((<>))
 import Data.Unique (newUnique, hashUnique)
 import System.Timeout (timeout)
 import Web.Skype.Core
-import Web.Skype.Parser
+import Web.Skype.Protocol
 
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as BL
@@ -24,20 +24,20 @@ type HandlerResult a = Maybe (Either SkypeError a)
 
 executeCommand :: (MonadIO m, MonadSkype m)
                => Command
-               -> (SkypeResponse -> HandlerResult a)
+               -> (SkypeNotification -> HandlerResult a)
                -> SkypeT m a
-executeCommand command handler = handleCommand command $ \response ->
-  case parseResponse response of
-    Right result -> handler result
-    Left _       -> Nothing
+executeCommand command handler = handleCommand command $ \notification ->
+  case parseNotification notification of
+    Just result -> handler result
+    Nothing     -> Nothing
 
 executeCommandWithID :: (MonadIO m, MonadSkype m)
                      => Command
-                     -> (SkypeResponse -> HandlerResult a)
+                     -> (SkypeNotification -> HandlerResult a)
                      -> SkypeT m a
 executeCommandWithID command handler =
-  handleCommandWithID command $ \expectID response ->
-    case parseResponseWithCommandID response of
+  handleCommandWithID command $ \expectID notification ->
+    case parseCommandResponse notification of
       Just (actualID, result)
         | actualID == expectID -> handler result
         | otherwise            -> Nothing
