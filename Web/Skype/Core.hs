@@ -7,7 +7,7 @@ module Web.Skype.Core (
   SkypeError(..),
   SkypeT,
   defaultConfig,
-  dupNotification,
+  dupNotificationChan,
   runSkype,
   runSkypeWith
 ) where
@@ -40,7 +40,7 @@ class (Monad m) => MonadSkype m where
   sendCommand :: Command -> m ()
 
   -- | Gets the notification channel of Skype from the event loop.
-  getNotification :: m (TChan Notification)
+  getNotificationChan :: m (TChan Notification)
 
 newtype SkypeT m a = SkypeT
   { runSkypeT :: ErrorT SkypeError (ReaderT SkypeConfig m) a
@@ -76,7 +76,7 @@ instance MonadBaseControl base m => MonadBaseControl base (SkypeT m) where
 instance MonadSkype m => MonadSkype (SkypeT m) where
   sendCommand = lift . sendCommand
 
-  getNotification = lift getNotification
+  getNotificationChan = lift getNotificationChan
 
 data SkypeConfig = SkypeConfig
   { skypeTimeout :: Int }
@@ -109,5 +109,5 @@ runSkypeWith :: (Monad m, MonadSkype (ReaderT connection m))
 runSkypeWith connection config skype =
   runReaderT (runReaderT (runErrorT (runSkypeT skype)) config) connection
 
-dupNotification :: (MonadIO m, MonadSkype m) => m (TChan Notification)
-dupNotification = getNotification >>= liftIO . atomically . dupTChan
+dupNotificationChan :: (MonadIO m, MonadSkype m) => m (TChan Notification)
+dupNotificationChan = getNotificationChan >>= liftIO . atomically . dupTChan

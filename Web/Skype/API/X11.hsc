@@ -39,7 +39,7 @@ import qualified Graphics.X11.Xlib.Extras as X
 
 data SkypeConnection = SkypeConnection
   { skypeAPI :: SkypeAPI
-  , skypeNotificaton :: TChan Notification
+  , skypeNotificatonChan :: TChan Notification
   , skypeThread :: ThreadId
   }
 
@@ -55,7 +55,7 @@ data SkypeAPI = SkypeAPI
 instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
   sendCommand command = asks skypeAPI >>= liftIO . flip sendTo command
 
-  getNotification = asks skypeNotificaton
+  getNotificationChan = asks skypeNotificatonChan
 
 openDisplay :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
             => String
@@ -110,13 +110,13 @@ connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
           -> m SkypeConnection
 connectTo address = do
   api <- createAPI address
-  notification <- liftIO newBroadcastTChanIO
+  notificationChan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $
-            runEventLoop api $ atomically . writeTChan notification
+            runEventLoop api $ atomically . writeTChan notificationChan
 
   let connection = SkypeConnection
                    { skypeAPI = api
-                   , skypeNotificaton = notification
+                   , skypeNotificatonChan = notificationChan
                    , skypeThread = thread
                    }
 

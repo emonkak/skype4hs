@@ -35,7 +35,7 @@ type ClientName = CFString
 
 data SkypeConnection = SkypeConnection
   { skypeClientID :: TMVar ClientID
-  , skypeNotification :: TChan Notification
+  , skypeNotificationChan :: TChan Notification
   , skypeNotificationCenter :: NotificationCenter
   , skypeThread :: ThreadId
   }
@@ -46,7 +46,7 @@ instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
     clientID <- asks skypeClientID >>= liftIO . atomically . readTMVar
     liftIO $ sendTo center clientID command
 
-  getNotification = asks skypeNotification
+  getNotificationChan = asks skypeNotificationChan
 
 connect :: (Error e, MonadIO m, MonadError e m) => m SkypeConnection
 connect = do
@@ -78,7 +78,7 @@ newConnection = do
 
   return SkypeConnection
     { skypeClientID = clientIDVar
-    , skypeNotification = notificatonChan
+    , skypeNotificationChan = notificatonChan
     , skypeNotificationCenter = center
     , skypeThread = threadID
     }

@@ -48,7 +48,7 @@ handleCommand :: (MonadIO m, MonadSkype m)
        -> (BL.ByteString -> HandlerResult a)
        -> SkypeT m a
 handleCommand command handler = do
-  chan <- dupNotification
+  chan <- dupNotificationChan
 
   sendCommand command
 
