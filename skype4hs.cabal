@@ -74,3 +74,4 @@ library
                        ScopedTypeVariables,
                        TypeFamilies,
                        UndecidableInstances
+  ghc-options:         -Wall

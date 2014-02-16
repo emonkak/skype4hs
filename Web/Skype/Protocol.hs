@@ -80,7 +80,6 @@ import Web.Skype.Protocol.Misc
 import Web.Skype.Protocol.Types
 import Web.Skype.Protocol.User
 
-import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as BL
 

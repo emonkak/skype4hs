@@ -14,7 +14,6 @@ module Web.Skype.Core (
 
 import Control.Applicative (Applicative)
 import Control.Concurrent.STM.TChan (TChan, dupTChan)
-import Control.Exception (Exception)
 import Control.Monad (liftM)
 import Control.Monad.Error (MonadError, Error(..), ErrorT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), runReaderT)
@@ -81,6 +80,7 @@ instance MonadSkype m => MonadSkype (SkypeT m) where
 data SkypeConfig = SkypeConfig
   { skypeTimeout :: Int }
 
+defaultConfig :: SkypeConfig
 defaultConfig = SkypeConfig
   { skypeTimeout = 10000 * 1000 }
 

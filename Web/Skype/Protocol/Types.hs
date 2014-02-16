@@ -36,9 +36,9 @@ type UserRichMoodText = T.Text
 type UserTimezoneOffset = EpochTime
 
 p_userID :: Parser UserID
-p_userID = takeWhile1 isSymbol
+p_userID = takeWhile1 symbol
   where
-    isSymbol c = any ($ c)
+    symbol c = any ($ c)
       [ isAlpha
       , isDigit
       , (==) _numbersign
@@ -112,9 +112,9 @@ type ChatDescription = T.Text
 type ChatBlob = BS.ByteString
 
 p_chatID :: Parser ChatID
-p_chatID = takeWhile1 $ isSymbol
+p_chatID = takeWhile1 $ symbol
   where
-    isSymbol c = any ($ c)
+    symbol c = any ($ c)
       [ isAlpha
       , isDigit
       , (==) _numbersign

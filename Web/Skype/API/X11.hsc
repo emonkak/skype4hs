@@ -6,27 +6,24 @@ module Web.Skype.API.X11 (
 
 #include <X11/Xlib.h>
 
-import Control.Concurrent (ThreadId, forkIO, killThread)
+import Control.Concurrent (ThreadId, forkIO)
 import Control.Concurrent.STM.TChan (TChan, newBroadcastTChanIO, writeTChan)
 import Control.Exception (IOException)
 import Control.Exception.Lifted (catch)
 import Control.Monad (mplus)
-import Control.Monad.Error (Error, runErrorT, strMsg)
-import Control.Monad.Error.Class (MonadError, catchError, throwError)
-import Control.Monad.Reader (MonadReader(..), ReaderT, asks)
+import Control.Monad.Error (Error, strMsg)
+import Control.Monad.Error.Class (MonadError, throwError)
+import Control.Monad.Reader (ReaderT, asks)
 import Control.Monad.STM (atomically)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Control.Monad.Trans.Control (MonadBaseControl, control, restoreM)
-import Data.Bits ((.&.))
+import Control.Monad.Trans.Control (MonadBaseControl, control)
 import Data.Maybe (listToMaybe)
 import Data.Monoid (mappend, mempty)
-import Data.Typeable (Typeable)
 import Foreign hiding (addForeignPtrFinalizer, newForeignPtr)
-import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Concurrent
 import System.Environment (getEnv, getProgName)
-import Web.Skype.Command.Misc (name, protocol)
+import Web.Skype.Command.Misc (authenticate)
 import Web.Skype.Core
 
 import qualified Data.ByteString as BS
@@ -120,7 +117,7 @@ connectTo address = do
                    , skypeThread = thread
                    }
 
-  result <- runSkype connection $ liftIO getProgName >>= name . BC.pack
+  result <- runSkype connection $ liftIO getProgName >>= authenticate . BC.pack
 
   either (throwError . strMsg . show) (const $ return connection) result
 
@@ -195,14 +192,14 @@ withForeignPtr' fp action =
   control $ \runInIO -> withForeignPtr fp $ runInIO . action
 
 ptrIndex :: (Eq a, Storable a) => Ptr a -> a -> Int -> IO (Maybe Int)
-ptrIndex p x n = go 0 x $ take n $ iterate (flip plusPtr 1) p
+ptrIndex ptr value n = go 0 value $ take n $ iterate (flip plusPtr 1) ptr
   where
-    go acc element [] = return Nothing
-    go acc element (x:xs) = do
-      x' <- peek x
-      if x' == element
+    go _ _ [] = return Nothing
+    go acc x (y:ys) = do
+      y' <- peek y
+      if y' == x
         then return $ Just acc
-        else go (acc + 1) element xs
+        else go (acc + 1) x ys
 
 messageChunkSize :: Int
 messageChunkSize = #{const sizeof(((XClientMessageEvent *) 0)->data.b) / sizeof(((XClientMessageEvent *) 0)->data.b[0])}

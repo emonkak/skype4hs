@@ -131,28 +131,34 @@ newtype ChatOption = ChatOption Int
   deriving (Bits, Eq, Show)
 
 -- | When this bit is off, new users cannot join the chat.
+chatOptionJoiningEnabled :: ChatOption
 chatOptionJoiningEnabled = ChatOption 1
 
 -- | When this bit is on, new users will be able to join the chat but they
 -- will be unable to post or receive messages until authorized by one of the
 -- chat administrators (CREATOR or MASTER).
+chatOptionJoinersBecomeApplicants :: ChatOption
 chatOptionJoinersBecomeApplicants = ChatOption 2
 
 -- | When this bit is on, new users will be able to receive message in chat
 -- but unable to post until promoted to USER role. Basically a read-only flag
 -- for new users.
+chatOptionJoinersBecomeListeners :: ChatOption
 chatOptionJoinersBecomeListeners = ChatOption 4
 
 -- | When this bit is off, newly joined members can see chat history prior to
 -- their joining. Maximum amount of history backlog available is either 400
 -- messages or 2 weeks of time, depending on which limit is reached first.
+chatOptionHistoryDisclosed :: ChatOption
 chatOptionHistoryDisclosed = ChatOption 8
 
 -- | Read-only flag for chat members with USER role.
+chatOptionUsersAreListeners :: ChatOption
 chatOptionUsersAreListeners = ChatOption 16
 
 -- | when this bit of options is off, USER level chat members can change chat
 -- topic and the topic picture.
+chatOptionTopicAndPicLockedForUsers :: ChatOption
 chatOptionTopicAndPicLockedForUsers = ChatOption 32
 
 data ChatType
