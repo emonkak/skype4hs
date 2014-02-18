@@ -44,6 +44,7 @@ p_userID = takeWhile1 symbol
       , (==) _numbersign
       , (==) _hyphen
       , (==) _period
+      , (==) _underscore
       ]
 
 p_userFullName :: Parser UserDisplayName
