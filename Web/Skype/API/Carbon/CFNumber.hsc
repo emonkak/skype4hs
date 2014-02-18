@@ -3,7 +3,6 @@ module Web.Skype.API.Carbon.CFNumber where
 #include "CoreFoundation/CFNumber.h"
 
 import Foreign
-import Foreign.C.String
 import Foreign.C.Types
 import Web.Skype.API.Carbon.CFBase
 

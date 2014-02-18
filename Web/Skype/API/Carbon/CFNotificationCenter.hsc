@@ -2,7 +2,6 @@ module Web.Skype.API.Carbon.CFNotificationCenter where
 
 #include "CoreFoundation/CFNotificationCenter.h"
 
-import Control.Applicative
 import Data.IORef
 import Foreign hiding (addForeignPtrFinalizer, newForeignPtr)
 import Foreign.C.Types

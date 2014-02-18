@@ -16,8 +16,6 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Maybe
 import Foreign hiding (addForeignPtrFinalizer)
 import Foreign.Concurrent (addForeignPtrFinalizer)
-import Foreign.C.Types
-import System.Environment (getProgName)
 import Web.Skype.API.Carbon.CFBase
 import Web.Skype.API.Carbon.CFDictionary
 import Web.Skype.API.Carbon.CFNotificationCenter
@@ -27,8 +25,6 @@ import Web.Skype.API.Carbon.CarbonEventsCore
 import Web.Skype.Core
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Unsafe as BS
 
 type ClientID = Int
 type ClientName = CFString
@@ -48,9 +44,11 @@ instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
 
   getNotificationChan = asks skypeNotificationChan
 
-connect :: (Error e, MonadIO m, MonadError e m) => m SkypeConnection
-connect = do
-  connection <- liftIO newConnection
+connect :: (Error e, MonadIO m, MonadError e m)
+        => BS.ByteString
+        -> m SkypeConnection
+connect appName = do
+  connection <- liftIO $ newConnection appName
   clientID <- liftIO $ atomically $ readTMVar $ skypeClientID connection
 
   when (clientID <= 0) $ throwError $ strMsg "Couldn't connect to Skype client."
@@ -61,9 +59,9 @@ connect = do
 
   return connection
 
-newConnection :: IO SkypeConnection
-newConnection = do
-  clientName <- getProgName >>= newCFString >>= newForeignPtr p_CFRelease
+newConnection :: BS.ByteString -> IO SkypeConnection
+newConnection appName = do
+  clientName <- newCFString appName >>= newForeignPtr p_CFRelease
   clientIDVar <- newEmptyTMVarIO
   notificatonChan <- newBroadcastTChanIO
 

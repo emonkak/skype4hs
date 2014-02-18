@@ -22,12 +22,11 @@ import Data.Monoid (mappend, mempty)
 import Foreign hiding (addForeignPtrFinalizer, newForeignPtr)
 import Foreign.C.Types
 import Foreign.Concurrent
-import System.Environment (getEnv, getProgName)
+import System.Environment (getEnv)
 import Web.Skype.Command.Misc (authenticate)
 import Web.Skype.Core
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Builder as BS
 import qualified Data.ByteString.Unsafe as BS
@@ -99,13 +98,15 @@ getSkypeInstanceWindow display root = do
     Just property -> return $ fromIntegral property .&. 0xffffffff
 
 connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-        => m SkypeConnection
-connect = connectTo =<< getDisplayAddress
+        => BS.ByteString
+        -> m SkypeConnection
+connect appName = connectTo appName =<< getDisplayAddress
 
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-          => String
+          => BS.ByteString
+          -> String
           -> m SkypeConnection
-connectTo address = do
+connectTo appName address = do
   api <- createAPI address
   notificationChan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $
@@ -117,7 +118,7 @@ connectTo address = do
                    , skypeThread = thread
                    }
 
-  result <- runSkype connection $ liftIO getProgName >>= authenticate . BC.pack
+  result <- runSkype connection $ authenticate appName
 
   either (throwError . strMsg . show) (const $ return connection) result
 
