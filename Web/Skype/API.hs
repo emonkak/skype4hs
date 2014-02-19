@@ -7,7 +7,7 @@ module Web.Skype.API (
 
 import Web.Skype.Core
 
-#if defined __APPLE__
+#if defined(darwin_HOST_OS)
 import qualified Web.Skype.API.Carbon as API
 #else
 import qualified Web.Skype.API.X11 as API
