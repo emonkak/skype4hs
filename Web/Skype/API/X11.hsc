@@ -1,5 +1,6 @@
 module Web.Skype.API.X11 (
   SkypeConnection,
+  DisplayAddress,
   connect,
   connectTo
 ) where
@@ -48,20 +49,22 @@ data SkypeAPI = SkypeAPI
   }
   deriving (Show, Eq)
 
+type DisplayAddress = String
+
 instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
   sendCommand command = asks skypeAPI >>= liftIO . flip sendTo command
 
   getNotificationChan = asks skypeNotificatonChan
 
 openDisplay :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-            => String
+            => DisplayAddress
             -> m (ForeignPtr X.Display)
 openDisplay address = do
   display'@(X.Display display) <- liftIO (X.openDisplay address) `catch` throwError
   liftIO $ newForeignPtr display $ X.closeDisplay display'
 
 getDisplayAddress :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-                  => m String
+                  => m DisplayAddress
 getDisplayAddress = liftIO (getEnv "SKYPEDISPLAY" `mplus` getEnv "DISPLAY")
                     `catch` throwError
 
@@ -98,15 +101,15 @@ getSkypeInstanceWindow display root = do
     Just property -> return $ fromIntegral property .&. 0xffffffff
 
 connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-        => BS.ByteString
+        => ApplicationName
         -> m SkypeConnection
-connect appName = connectTo appName =<< getDisplayAddress
+connect appName = flip connectTo appName =<< getDisplayAddress
 
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
-          => BS.ByteString
-          -> String
+          => DisplayAddress
+          -> ApplicationName
           -> m SkypeConnection
-connectTo appName address = do
+connectTo address appName = do
   api <- createAPI address
   notificationChan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $

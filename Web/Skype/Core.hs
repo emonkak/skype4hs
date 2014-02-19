@@ -1,8 +1,9 @@
 module Web.Skype.Core (
+  ApplicationName,
   Command,
   CommandID,
-  MonadSkype(..),
   Notification,
+  MonadSkype(..),
   SkypeConfig(..),
   SkypeError(..),
   SkypeT,
@@ -27,6 +28,8 @@ import Data.Typeable (Typeable)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
+
+type ApplicationName = BS.ByteString
 
 type Command = BS.ByteString
 type CommandID = BS.ByteString

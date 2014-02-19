@@ -24,8 +24,6 @@ import Web.Skype.API.Carbon.CFString
 import Web.Skype.API.Carbon.CarbonEventsCore
 import Web.Skype.Core
 
-import qualified Data.ByteString as BS
-
 type ClientID = Int
 type ClientName = CFString
 
@@ -45,7 +43,7 @@ instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
   getNotificationChan = asks skypeNotificationChan
 
 connect :: (Error e, MonadIO m, MonadError e m)
-        => BS.ByteString
+        => ApplicationName
         -> m SkypeConnection
 connect appName = do
   connection <- liftIO $ newConnection appName
@@ -59,7 +57,7 @@ connect appName = do
 
   return connection
 
-newConnection :: BS.ByteString -> IO SkypeConnection
+newConnection :: ApplicationName -> IO SkypeConnection
 newConnection appName = do
   clientName <- newCFString appName >>= newForeignPtr p_CFRelease
   clientIDVar <- newEmptyTMVarIO
