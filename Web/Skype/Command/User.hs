@@ -1,6 +1,4 @@
-module Web.Skype.Command.User (
-  getCurrentUserHandle
-) where
+module Web.Skype.Command.User where
 
 import Control.Monad.Trans
 import Control.Monad.Trans.Control

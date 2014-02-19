@@ -1,7 +1,4 @@
-module Web.Skype.Command.Misc (
-  authenticate,
-  protocol
-) where
+module Web.Skype.Command.Misc where
 
 import Control.Monad.Error
 import Control.Monad.Trans.Control

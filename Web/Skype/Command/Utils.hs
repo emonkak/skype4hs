@@ -1,9 +1,4 @@
-module Web.Skype.Command.Utils (
-  executeCommand,
-  executeCommandWithID,
-  handleCommand,
-  handleCommandWithID
-) where
+module Web.Skype.Command.Utils where
 
 import Control.Concurrent.STM.TChan (readTChan)
 import Control.Monad.Error (throwError)
@@ -16,6 +11,7 @@ import Data.Monoid ((<>))
 import Data.Unique (newUnique, hashUnique)
 import System.Timeout.Lifted (timeout)
 import Web.Skype.Core
+import Web.Skype.Parser (parseNotification, parseNotificationWithCommandID)
 import Web.Skype.Protocol
 
 import qualified Data.ByteString.Char8 as BC
@@ -35,7 +31,7 @@ executeCommandWithID :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                      -> (SkypeNotification -> SkypeT m (Maybe a))
                      -> SkypeT m a
 executeCommandWithID command handler = handleCommandWithID command $ \expectID notification ->
-  case parseCommandResponse notification of
+  case parseNotificationWithCommandID notification of
     Just (actualID, response)
       | actualID == expectID -> do
         result <- handler response

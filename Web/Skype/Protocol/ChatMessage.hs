@@ -1,7 +1,5 @@
 module Web.Skype.Protocol.ChatMessage where
 
-import Control.Applicative
-import Data.Attoparsec.ByteString.Lazy
 import Web.Skype.Protocol.Chat
 import Web.Skype.Protocol.Types
 
@@ -151,63 +149,3 @@ data ChatMessageLeaveReason
   -- | Participant left chat
   | ChatMessageLeaveReasonUnsubscribe
   deriving (Eq, Show)
-
-p_chatMessageProperty :: Parser ChatMessageProperty
-p_chatMessageProperty = choice
-  [ ChatMessageTimestamp       <$> (property "TIMESTAMP" *> p_timestamp)
-  , ChatMessageFromHandle      <$> (property "FROM_HANDLE" *> p_userID)
-  , ChatMessageFromDisplayName <$> (property "FROM_DISPNAME" *> p_userDisplayName)
-  , ChatMessageType            <$> (property "TYPE" *> p_chatMessageType)
-  , ChatMessageStatus          <$> (property "STATUS" *> p_chatMessageStatus)
-  , ChatMessageLeaveReason     <$> (property "LEAVEREASON" *> p_chatMessageLeaveReason)
-  , ChatMessageChatName        <$> (property "CHATNAME" *> p_chatID)
-  , ChatMessageUsers           <$> (property "USERS" *> p_userIDs)
-  , ChatMessageIsEditable      <$> (property "IS_EDITABLE" *> p_boolean)
-  , ChatMessageEditedBy        <$> (property "EDITED_BY" *> p_userID)
-  , ChatMessageEditedTimestamp <$> (property "EDITED_TIMESTAMP" *> p_timestamp)
-  , ChatMessageOptions         <$> (property "OPTIONS" *> p_chatOptions)
-  , ChatMessageRole            <$> (property "ROLE" *> p_chatRole)
-  , ChatMessageSeen            <$  (string "SEEN" *> endOfInput)
-  , ChatMessageBody            <$> (property "BODY" *> p_chatMessageBody)
-  ]
-  where
-    property prop = string prop *> spaces
-
-    p_userIDs = p_userID `sepBy` spaces
-
-p_chatMessageType :: Parser ChatMessageType
-p_chatMessageType = choice
-  [ ChatMessageTypeSetTopic          <$ string "SETTOPIC"
-  , ChatMessageTypeSaid              <$ string "SAID"
-  , ChatMessageTypeAddMembers        <$ string "ADDMEMBERS"
-  , ChatMessageTypeSawMembers        <$ string "SAWMEMBERS"
-  , ChatMessageTypeCreatedChatWith   <$ string "CREATEDCHATWITH"
-  , ChatMessageTypeLeft              <$ string "LEFT"
-  , ChatMessageTypePostedContacts    <$ string "POSTEDCONTACTS"
-  , ChatMessageTypeGapInChat         <$ string "GAP_IN_CHAT"
-  , ChatMessageTypeSetRole           <$ string "SETROLE"
-  , ChatMessageTypeKicked            <$ string "KICKED"
-  , ChatMessageTypeKickBanned        <$ string "KICKBANNED"
-  , ChatMessageTypeSetOptions        <$ string "SETOPTIONS"
-  , ChatMessageTypeSetPicture        <$ string "SETPICTURE"
-  , ChatMessageTypeSetGuideLines     <$ string "SETGUIDELINES"
-  , ChatMessageTypeJoinedAsApplicant <$ string "JOINEDASAPPLICANT"
-  , ChatMessageTypeUnkown            <$ string "UNKNOWN"
-  ]
-
-p_chatMessageStatus :: Parser ChatMessageStatus
-p_chatMessageStatus = choice
-  [ ChatMessageStatusSending <$ string "SENDING"
-  , ChatMessageStatusSent    <$ string "SENT"
-  , ChatMessageStatusReceive <$ string "RECEIVE"
-  , ChatMessageStatusRead    <$ string "READ"
-  ]
-
-p_chatMessageLeaveReason :: Parser ChatMessageLeaveReason
-p_chatMessageLeaveReason = choice
-  [ ChatMessageLeaveReasonUserNotFound          <$ string "USER_NOT_FOUND"
-  , ChatMessageLeaveReasonUserIncapable         <$ string "USER_INCAPABLE"
-  , ChatMessageLeaveReasonAdderMustBeFriend     <$ string "ADDER_MUST_BE_FRIEND"
-  , ChatMessageLeaveReasonAdderMustBeAuthorized <$ string "ADDED_MUST_BE_AUTHORIZED"
-  , ChatMessageLeaveReasonUnsubscribe           <$ string "UNSUBSCRIBE"
-  ]

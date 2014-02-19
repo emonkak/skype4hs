@@ -1,16 +1,4 @@
-module Web.Skype.Command.ChatMessage (
-  getTimestamp,
-  getSender,
-  getSenderDisplayName,
-  getType,
-  getStatus,
-  getLeaveReason,
-  getChat,
-  getAllUsers,
-  isEditable,
-  getBody,
-  setBody
-) where
+module Web.Skype.Command.ChatMessage where
 
 import Control.Monad.Trans
 import Control.Monad.Trans.Control

@@ -1,28 +1,4 @@
-module Web.Skype.Command.Chat (
-  setTopic,
-  addMembers,
-  joinChat,
-  leaveChat,
-  sendMessage,
-  getTimestamp,
-  getAdder,
-  getStatus,
-  getAllPosters,
-  getAllMembers,
-  getTopic,
-  getActiveMembers,
-  getWindowTitle,
-  getAllMessages,
-  getRecentMessages,
-  isBookmarked,
-  createChat,
-  openChat,
-  searchAllChats,
-  searchActiveChats,
-  searchMissedChats,
-  searchRecentChats
-)
-where
+module Web.Skype.Command.Chat where
 
 import Control.Monad.Trans
 import Control.Monad.Trans.Control
