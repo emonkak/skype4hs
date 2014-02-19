@@ -19,6 +19,7 @@ import Web.Skype.Protocol.User
 data SkypeNotification = AlterChat AlterChatProperty
                        | Chat ChatID ChatProperty
                        | Chats [ChatID]
+                       | ChatMember ChatMemberID ChatMemberProperty
                        | ChatMessage ChatMessageID ChatMessageProperty
                        | ConnectionStatus ConnectionStatus
                        | Error ErrorCode ErrorDescription

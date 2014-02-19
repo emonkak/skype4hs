@@ -35,6 +35,7 @@ library
 
   exposed-modules:     Web.Skype.API,
                        Web.Skype.Command.Chat,
+                       Web.Skype.Command.ChatMember,
                        Web.Skype.Command.ChatMessage,
                        Web.Skype.Command.Misc,
                        Web.Skype.Command.User,
@@ -42,6 +43,7 @@ library
                        Web.Skype.Core,
                        Web.Skype.Parser,
                        Web.Skype.Parser.Chat,
+                       Web.Skype.Parser.ChatMember,
                        Web.Skype.Parser.ChatMessage,
                        Web.Skype.Parser.Types,
                        Web.Skype.Parser.User,

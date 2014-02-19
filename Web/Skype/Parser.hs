@@ -25,6 +25,7 @@ notification = choice
   [ alterNotification
   , chatsNotification
   , chatNotification
+  , chatMemberNotification
   , chatMessageNotification
   , connectionStatusNotification
   , errorNotification
@@ -57,6 +58,12 @@ chatsNotification :: Parser SkypeNotification
 chatsNotification = Chats <$> (string "CHATS" *> spaces *> chatIDs)
   where
     chatIDs = chatID `sepBy` (word8 _comma *> spaces)
+
+-- | CHATMEMEMBER
+chatMemberNotification :: Parser SkypeNotification
+chatMemberNotification = string "CHATMEMEMBER"
+                      *> spaces
+                      *> (ChatMember <$> (chatMemberID <* spaces) <*> chatMemberProperty)
 
 -- | CHATMESSAGE
 chatMessageNotification :: Parser SkypeNotification
