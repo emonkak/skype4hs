@@ -6,7 +6,6 @@ import Data.Attoparsec.ByteString.Lazy
 import Data.Char (chr)
 import Data.Time.Calendar (fromGregorian)
 import Data.Word8
-import Foreign.C.Types (CTime(..))
 import Web.Skype.Protocol.Types
 
 import qualified Data.ByteString as BS
@@ -77,7 +76,7 @@ userRichMoodText :: Parser UserRichMoodText
 userRichMoodText = takeText
 
 userTimezoneOffset :: Parser UserTimezoneOffset
-userTimezoneOffset = CTime <$> decimal
+userTimezoneOffset = decimal
 
 -- * Chat
 
@@ -133,7 +132,7 @@ boolean :: Parser Bool
 boolean = (True <$ string "TRUE") <|> (False <$ string "FALSE")
 
 timestamp :: Parser Timestamp
-timestamp = CTime <$> decimal
+timestamp = decimal
 
 spaces :: Parser BS.ByteString
 spaces = takeWhile1 isSpace

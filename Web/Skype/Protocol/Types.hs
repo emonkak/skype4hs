@@ -1,7 +1,6 @@
 module Web.Skype.Protocol.Types where
 
 import Data.Time.Calendar (Day)
-import System.Posix.Types (EpochTime)
 
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
@@ -26,7 +25,7 @@ type UserSpeedDial = T.Text
 type UserAuthRequestMessage = T.Text
 type UserMoodText = T.Text
 type UserRichMoodText = T.Text
-type UserTimezoneOffset = EpochTime
+type UserTimezoneOffset = Int
 
 -- * Chat
 
@@ -49,7 +48,7 @@ type ChatMessageBody = T.Text
 
 -- * Misc.
 
-type Timestamp = EpochTime
+type Timestamp = Int
 
 type ErrorCode = Int
 type ErrorDescription = T.Text
