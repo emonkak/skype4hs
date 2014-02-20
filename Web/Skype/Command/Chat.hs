@@ -87,7 +87,7 @@ getTimestamp chatID = executeCommandWithID command $ \response ->
 -- | Returns the user who added the current user to chat.
 getAdder :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
          => ChatID
-         -> SkypeT m UserID
+         -> SkypeT m (Maybe UserID)
 getAdder chatID = executeCommandWithID command $ \response ->
   case response of
     Chat _ (ChatAdder adder) -> return $ Just adder

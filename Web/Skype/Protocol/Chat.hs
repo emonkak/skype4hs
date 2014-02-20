@@ -25,7 +25,7 @@ data ChatProperty
   | ChatTimestamp Timestamp
 
   -- | User who added the current user to chat.
-  | ChatAdder UserID
+  | ChatAdder (Maybe UserID)
 
   -- | Chat status
   | ChatStatus ChatStatus

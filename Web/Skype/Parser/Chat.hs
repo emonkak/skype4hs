@@ -11,7 +11,7 @@ chatProperty :: Parser ChatProperty
 chatProperty = choice
   [ ChatName              <$> (property "NAME" *> chatID)
   , ChatTimestamp         <$> (property "TIMESTAMP" *> timestamp)
-  , ChatAdder             <$> (property "ADDER" *> userID)
+  , ChatAdder             <$> (property "ADDER" *> (Just <$> chatID <|> pure Nothing))
   , ChatStatus            <$> (property "STATUS" *> chatStatus)
   , ChatPosters           <$> (property "POSTERS" *> userIDs)
   , ChatMembers           <$> (property "MEMBERS" *> userIDs)
