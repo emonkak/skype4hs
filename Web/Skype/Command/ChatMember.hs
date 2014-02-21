@@ -54,7 +54,7 @@ isActive :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
          -> SkypeT m Bool
 isActive chatMemberID = executeCommandWithID command $ \response ->
   case response of
-    ChatMember _ (ChatMemberIsActive isActive) -> return $ Just isActive
-    _                                          -> return Nothing
+    ChatMember _ (ChatMemberIsActive active) -> return $ Just active
+    _                                        -> return Nothing
   where
     command = "GET CHATMEMBER " <> (BC.pack $ show chatMemberID) <> " IS_ACTIVE"
