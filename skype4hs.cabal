@@ -16,12 +16,25 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
+Flag x11
+  Description: Enable x11 communication layer support
+  Default:     False
+
+Flag carbon
+  Description: Enable carbon communication layer support
+  Default:     False
+
+Flag WebFrontend
+  Description: Include API for web frontend.
+  -- Cabal checks if the configuration is possible, first
+  -- with this flag set to True and if not it tries with False
+
 library
-  if !os(windows)
+  if os(linux) || os(freebsd) || flag(x11)
     exposed-modules:   Web.Skype.API.X11
     build-depends:     X11 >=1.6.1
 
-  if os(darwin)
+  if os(darwin) || flag(carbon)
     frameworks:        Carbon
     exposed-modules:   Web.Skype.API.Carbon
     other-modules:     Web.Skype.API.Carbon.CFBase,
