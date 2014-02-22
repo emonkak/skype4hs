@@ -17,7 +17,7 @@ class CFNumberFactory a where
 
 instance (Integral a) => CFNumberFactory a where
   fromCFNumber number = alloca $ \(ptr :: Ptr CInt) -> do
-    c_CFNumberGetValue number intType ptr
+    _ <- c_CFNumberGetValue number intType ptr
     fromIntegral `fmap` peek ptr
 
   newCFNumber value = alloca $ \ptr -> do

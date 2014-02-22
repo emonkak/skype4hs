@@ -31,7 +31,7 @@ instance CFStringFactory CString where
     len <- c_CFStringGetLength source
     let bufferSize = c_CFStringGetMaximumSizeForEncoding len encodingUTF8 + 1
     bufferPtr <- mallocArray $ fromIntegral bufferSize
-    c_CFStringGetCString source bufferPtr bufferSize encodingUTF8
+    _ <- c_CFStringGetCString source bufferPtr bufferSize encodingUTF8
     return bufferPtr
 
 instance CFStringFactory String where
