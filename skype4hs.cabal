@@ -24,11 +24,6 @@ Flag carbon
   Description: Enable carbon communication layer support
   Default:     False
 
-Flag WebFrontend
-  Description: Include API for web frontend.
-  -- Cabal checks if the configuration is possible, first
-  -- with this flag set to True and if not it tries with False
-
 library
   if os(linux) || os(freebsd) || flag(x11)
     exposed-modules:   Web.Skype.API.X11
