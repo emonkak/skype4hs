@@ -18,7 +18,7 @@ import qualified Data.ByteString.Char8 as BC
 
 executeCommand :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                => Command
-               -> (SkypeNotification -> SkypeT m (Maybe a))
+               -> (NotificationObject -> SkypeT m (Maybe a))
                -> SkypeT m a
 executeCommand command handler = handleCommand command $ \notification ->
   case parseNotification notification of
@@ -27,7 +27,7 @@ executeCommand command handler = handleCommand command $ \notification ->
 
 executeCommandWithID :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                      => Command
-                     -> (SkypeNotification -> SkypeT m (Maybe a))
+                     -> (NotificationObject -> SkypeT m (Maybe a))
                      -> SkypeT m a
 executeCommandWithID command handler = handleCommandWithID command $ \expectID notification ->
   case parseNotificationWithCommandID notification of

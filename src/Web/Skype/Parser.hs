@@ -14,13 +14,13 @@ import Web.Skype.Protocol
 
 import qualified Data.Text.Encoding as T
 
-parseNotification :: Notification -> Maybe SkypeNotification
+parseNotification :: Notification -> Maybe NotificationObject
 parseNotification = maybeResult . parse notification
 
-parseNotificationWithCommandID :: Notification -> Maybe (CommandID, SkypeNotification)
+parseNotificationWithCommandID :: Notification -> Maybe (CommandID, NotificationObject)
 parseNotificationWithCommandID = maybeResult . parse notificationWithCommandID
 
-notification :: Parser SkypeNotification
+notification :: Parser NotificationObject
 notification = choice
   [ alterNotification
   , chatsNotification
@@ -36,43 +36,43 @@ notification = choice
   , currentUserHandleNotification
   ]
 
-notificationWithCommandID :: Parser (CommandID, SkypeNotification)
+notificationWithCommandID :: Parser (CommandID, NotificationObject)
 notificationWithCommandID = (,) <$> (commandID <* spaces) <*> notification
   where
     commandID = word8 _numbersign *> takeWhile1 (not . isSpace)
 
 -- | ALTER
-alterNotification :: Parser SkypeNotification
+alterNotification :: Parser NotificationObject
 alterNotification = string "ALTER" *> spaces *> choice
   [ AlterChat <$> (string "CHAT" *> spaces *> alterChatProperties)
   ]
 
 -- | CHAT
-chatNotification :: Parser SkypeNotification
+chatNotification :: Parser NotificationObject
 chatNotification = string "CHAT"
                 *> spaces
                 *> (Chat <$> (chatID <* spaces) <*> chatProperty)
 
 -- | CHATS
-chatsNotification :: Parser SkypeNotification
+chatsNotification :: Parser NotificationObject
 chatsNotification = Chats <$> (string "CHATS" *> spaces *> chatIDs)
   where
     chatIDs = chatID `sepBy` (word8 _comma *> spaces)
 
 -- | CHATMEMEMBER
-chatMemberNotification :: Parser SkypeNotification
+chatMemberNotification :: Parser NotificationObject
 chatMemberNotification = string "CHATMEMEMBER"
                       *> spaces
                       *> (ChatMember <$> (chatMemberID <* spaces) <*> chatMemberProperty)
 
 -- | CHATMESSAGE
-chatMessageNotification :: Parser SkypeNotification
+chatMessageNotification :: Parser NotificationObject
 chatMessageNotification = string "CHATMESSAGE"
                        *> spaces
                        *> (ChatMessage <$> (chatMessageID <* spaces) <*> chatMessageProperty)
 
 -- | CONNSTATUS
-connectionStatusNotification :: Parser SkypeNotification
+connectionStatusNotification :: Parser NotificationObject
 connectionStatusNotification = ConnectionStatus <$> (string "CONNSTATUS" *> spaces *> status)
   where
     status = choice
@@ -82,7 +82,7 @@ connectionStatusNotification = ConnectionStatus <$> (string "CONNSTATUS" *> spac
       , ConnectionStatusOnline     <$ string "ONLINE" ]
 
 -- | ERROR
-errorNotification :: Parser SkypeNotification
+errorNotification :: Parser NotificationObject
 errorNotification = Error <$> code <*> (description <|> pure "")
   where
     code = string "ERROR" *> spaces *> decimal
@@ -90,26 +90,26 @@ errorNotification = Error <$> code <*> (description <|> pure "")
     description = spaces *> (T.decodeUtf8 <$> takeByteString)
 
 -- | OPEN
-openNotification :: Parser SkypeNotification
+openNotification :: Parser NotificationObject
 openNotification = string "OPEN" *> spaces *> choice
   [ chat ]
   where
     chat = OpenChat <$> (string "CHAT" *> spaces *> chatID)
 
 -- | PROTOCOL
-protocolNotification :: Parser SkypeNotification
+protocolNotification :: Parser NotificationObject
 protocolNotification = Protocol <$> (string "PROTOCOL" *> spaces *> decimal)
 
 -- | USER
-userNotification :: Parser SkypeNotification
+userNotification :: Parser NotificationObject
 userNotification = User <$> (string "USER" *> spaces *> userID <* spaces)
                           <*> userProperty
 
 -- | USERSTATUS
-userStatusNotification :: Parser SkypeNotification
+userStatusNotification :: Parser NotificationObject
 userStatusNotification = UserStatus <$> (string "USERSTATUS" *> spaces *> userStatus)
 
 -- | CURRENTUSERHANDLE
-currentUserHandleNotification :: Parser SkypeNotification
+currentUserHandleNotification :: Parser NotificationObject
 currentUserHandleNotification = CurrentUserHandle <$>
                                   (string "CURRENTUSERHANDLE" *> spaces *> userID)

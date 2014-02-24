@@ -6,7 +6,7 @@ module Web.Skype.Protocol (
   module Web.Skype.Protocol.Types,
   module Web.Skype.Protocol.User,
 
-  SkypeNotification(..)
+  NotificationObject(..)
 ) where
 
 import Web.Skype.Protocol.Chat
@@ -16,16 +16,16 @@ import Web.Skype.Protocol.Misc
 import Web.Skype.Protocol.Types
 import Web.Skype.Protocol.User
 
-data SkypeNotification = AlterChat AlterChatProperty
-                       | Chat ChatID ChatProperty
-                       | Chats [ChatID]
-                       | ChatMember ChatMemberID ChatMemberProperty
-                       | ChatMessage ChatMessageID ChatMessageProperty
-                       | ConnectionStatus ConnectionStatus
-                       | Error ErrorCode ErrorDescription
-                       | OpenChat ChatID
-                       | Protocol ProtocolVersion
-                       | User UserID UserProperty
-                       | UserStatus UserStatus
-                       | CurrentUserHandle UserID
+data NotificationObject = AlterChat AlterChatProperty
+                        | Chat ChatID ChatProperty
+                        | Chats [ChatID]
+                        | ChatMember ChatMemberID ChatMemberProperty
+                        | ChatMessage ChatMessageID ChatMessageProperty
+                        | ConnectionStatus ConnectionStatus
+                        | Error ErrorCode ErrorDescription
+                        | OpenChat ChatID
+                        | Protocol ProtocolVersion
+                        | User UserID UserProperty
+                        | UserStatus UserStatus
+                        | CurrentUserHandle UserID
   deriving (Eq, Show)
