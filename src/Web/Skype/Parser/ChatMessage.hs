@@ -13,7 +13,7 @@ chatMessageProperty = choice
   , ChatMessageFromDisplayName <$> (property "FROM_DISPNAME" *> userDisplayName)
   , ChatMessageType            <$> (property "TYPE" *> chatMessageType)
   , ChatMessageStatus          <$> (property "STATUS" *> chatMessageStatus)
-  , ChatMessageLeaveReason     <$> (property "LEAVEREASON" *> chatMessageLeaveReason)
+  , ChatMessageLeaveReason     <$> (property "LEAVEREASON" *> (Just <$> chatMessageLeaveReason <|> pure Nothing))
   , ChatMessageChatName        <$> (property "CHATNAME" *> chatID)
   , ChatMessageUsers           <$> (property "USERS" *> userIDs)
   , ChatMessageIsEditable      <$> (property "IS_EDITABLE" *> boolean)

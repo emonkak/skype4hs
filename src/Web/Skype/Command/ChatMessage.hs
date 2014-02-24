@@ -72,7 +72,7 @@ getStatus chatMessageID = executeCommandWithID command $ \response ->
 -- | Returns the leave reason.
 getLeaveReason :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                => ChatMessageID
-               -> SkypeT m ChatMessageLeaveReason
+               -> SkypeT m (Maybe ChatMessageLeaveReason)
 getLeaveReason chatMessageID = executeCommandWithID command $ \response ->
   case response of
     ChatMessage _ (ChatMessageLeaveReason leaveReason) -> return $ Just leaveReason

@@ -20,7 +20,7 @@ data ChatMessageProperty
   | ChatMessageStatus ChatMessageStatus
 
   -- | Used with LEFT type message
-  | ChatMessageLeaveReason ChatMessageLeaveReason
+  | ChatMessageLeaveReason (Maybe ChatMessageLeaveReason)
 
   -- | Chat that includes the message
   | ChatMessageChatName ChatID
