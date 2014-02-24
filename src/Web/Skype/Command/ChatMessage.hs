@@ -103,7 +103,7 @@ getAllUsers chatMessageID = executeCommandWithID command $ \response ->
     _                                        -> return Nothing
   where
     command = "GET CHATMESSAGE " <> BC.pack (show chatMessageID)
-                                 <> " USER"
+                                 <> " USERS"
 
 -- | Indicates if the chat message is editable.
 isEditable :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
