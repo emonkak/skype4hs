@@ -1,5 +1,5 @@
 module Web.Skype.API.X11 (
-  SkypeConnection,
+  Connection,
   DisplayAddress,
   connect,
   connectTo
@@ -34,7 +34,7 @@ import qualified Data.ByteString.Unsafe as BS
 import qualified Graphics.X11.Xlib as X
 import qualified Graphics.X11.Xlib.Extras as X
 
-data SkypeConnection = SkypeConnection
+data Connection = Connection
   { skypeAPI :: SkypeAPI
   , skypeNotificatonChan :: TChan Notification
   , skypeThread :: ThreadId
@@ -51,7 +51,7 @@ data SkypeAPI = SkypeAPI
 
 type DisplayAddress = String
 
-instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
+instance MonadIO m => MonadSkype (ReaderT Connection m) where
   sendCommand command = asks skypeAPI >>= liftIO . flip sendTo command
 
   getNotificationChan = asks skypeNotificatonChan
@@ -102,20 +102,20 @@ getSkypeInstanceWindow display root = do
 
 connect :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
         => ApplicationName
-        -> m SkypeConnection
+        -> m Connection
 connect appName = flip connectTo appName =<< getDisplayAddress
 
 connectTo :: (MonadBaseControl IO m, MonadIO m, MonadError IOException m)
           => DisplayAddress
           -> ApplicationName
-          -> m SkypeConnection
+          -> m Connection
 connectTo address appName = do
   api <- createAPI address
   notificationChan <- liftIO newBroadcastTChanIO
   thread <- liftIO $ forkIO $
             runEventLoop api $ atomically . writeTChan notificationChan
 
-  let connection = SkypeConnection
+  let connection = Connection
                    { skypeAPI = api
                    , skypeNotificatonChan = notificationChan
                    , skypeThread = thread

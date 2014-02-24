@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -cpp #-}
 
 module Web.Skype.API (
-  SkypeConnection,
+  Connection,
   connect
 ) where
 
@@ -13,7 +13,7 @@ import qualified Web.Skype.API.Carbon as API
 import qualified Web.Skype.API.X11 as API
 #endif
 
-type SkypeConnection = API.SkypeConnection
+type Connection = API.Connection
 
-connect :: ApplicationName -> IO API.SkypeConnection
+connect :: ApplicationName -> IO API.Connection
 connect = API.connect

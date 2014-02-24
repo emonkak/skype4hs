@@ -1,5 +1,5 @@
 module Web.Skype.API.Carbon (
-  SkypeConnection,
+  Connection,
   connect
 ) where
 
@@ -27,14 +27,14 @@ import Web.Skype.Core
 type ClientID = Int
 type ClientName = CFString
 
-data SkypeConnection = SkypeConnection
+data Connection = Connection
   { skypeClientID :: TMVar ClientID
   , skypeNotificationChan :: TChan Notification
   , skypeNotificationCenter :: NotificationCenter
   , skypeThread :: ThreadId
   }
 
-instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
+instance MonadIO m => MonadSkype (ReaderT Connection m) where
   sendCommand command = do
     center <- asks skypeNotificationCenter
     clientID <- asks skypeClientID >>= liftIO . atomically . readTMVar
@@ -44,7 +44,7 @@ instance MonadIO m => MonadSkype (ReaderT SkypeConnection m) where
 
 connect :: (Error e, MonadIO m, MonadError e m)
         => ApplicationName
-        -> m SkypeConnection
+        -> m Connection
 connect appName = do
   connection <- liftIO $ newConnection appName
   clientID <- liftIO $ atomically $ readTMVar $ skypeClientID connection
@@ -57,7 +57,7 @@ connect appName = do
 
   return connection
 
-newConnection :: ApplicationName -> IO SkypeConnection
+newConnection :: ApplicationName -> IO Connection
 newConnection appName = do
   clientName <- newCFString appName >>= newForeignPtr p_CFRelease
   clientIDVar <- newEmptyTMVarIO
@@ -72,7 +72,7 @@ newConnection appName = do
 
   attachTo center clientName
 
-  return SkypeConnection
+  return Connection
     { skypeClientID = clientIDVar
     , skypeNotificationChan = notificatonChan
     , skypeNotificationCenter = center
