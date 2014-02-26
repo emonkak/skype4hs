@@ -1,5 +1,6 @@
 module Web.Skype.Protocol.User where
 
+import Data.Typeable (Typeable)
 import Web.Skype.Protocol.Types
 
 data UserProperty = UserHandle UserID
@@ -32,12 +33,12 @@ data UserProperty = UserHandle UserID
                   | UserIsCallForwardingActive Bool
                   | UserNumberOfAuthedBuddies Integer
                   | UserDisplayName UserDisplayName
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data UserSex = UserSexUnknown
              | UserSexMale
              | UserSexFemale
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data UserStatus = UserStatusUnknown    -- ^ no status information for current user.
                 | UserStatusOnline     -- ^ current user is online.
@@ -48,13 +49,13 @@ data UserStatus = UserStatusUnknown    -- ^ no status information for current us
                 | UserStatusDND        -- ^ current user is in "Do not disturb" mode.
                 | UserStatusInvisible  -- ^ current user is invisible to others.
                 | UserStatusLoggedOut  -- ^ current user is logged out. Clients are detached.
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data UserBuddyStatus = UserBuddyStatusNeverBeen
                      | UserBuddyStatusDeleted
                      | UserBuddyStatusPending
                      | UserBuddyStatusAdded
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data UserOnlineStatus = UserOnlineStatusUnknown
                       | UserOnlineStatusOffline
@@ -62,4 +63,4 @@ data UserOnlineStatus = UserOnlineStatusUnknown
                       | UserOnlineStatusAway
                       | UserOnlineStatusNotAvailable
                       | UserOnlineStatusDoNotDisturb
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)

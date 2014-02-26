@@ -1,6 +1,7 @@
 module Web.Skype.Protocol.Chat where
 
 import Data.Bits (Bits)
+import Data.Typeable (Typeable)
 import Web.Skype.Protocol.Types
 
 data AlterChatProperty = AlterChatAcceptAdd
@@ -15,7 +16,7 @@ data AlterChatProperty = AlterChatAcceptAdd
                        | AlterChatSetOptions
                        | AlterChatSetPassword
                        | AlterChatSetTopic
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data ChatProperty
   -- | Chat ID
@@ -107,7 +108,7 @@ data ChatProperty
 
   -- | Chat was closed.
   | ChatClosed
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data ChatStatus
   -- | Old style IM
@@ -121,10 +122,10 @@ data ChatStatus
 
   -- | Left chat
   | ChatStatusUnsubscribed
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 newtype ChatOption = ChatOption Int
-  deriving (Bits, Eq, Show)
+  deriving (Bits, Eq, Show, Typeable)
 
 -- | When this bit is off, new users cannot join the chat.
 chatOptionJoiningEnabled :: ChatOption
@@ -172,7 +173,7 @@ data ChatType
 
   -- | No longer supported.
   | ChatTypeLegacyUnsubscribed
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data ChatMyStatus
   -- | Status set when the system is trying to connect to the chat.
@@ -218,7 +219,7 @@ data ChatMyStatus
   -- | Status set when connect to chat failed and system retries to establish
   -- connection.
   | ChatMyStatusRetryConnecting
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data ChatRole
   -- | Member who created the chat. There can be only one creator per chat. Only
@@ -242,4 +243,4 @@ data ChatRole
   -- | A member waiting for acceptance into the chat. Member cannot be demoted
   -- to applicants once they have been accepted.
   | ChatRoleApplicant
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)

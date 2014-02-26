@@ -1,5 +1,6 @@
 module Web.Skype.Protocol.ChatMessage where
 
+import Data.Typeable (Typeable)
 import Web.Skype.Protocol.Chat
 import Web.Skype.Protocol.Types
 
@@ -55,7 +56,7 @@ data ChatMessageProperty
   -- | The message is seen and will be removed from missed messages list. The
   -- UI sets this automatically if auto-popup is enabled for the user.
   | ChatMessageSeen
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data ChatMessageType
   -- | Change of chattopic
@@ -117,7 +118,7 @@ data ChatMessageType
   -- | Unknown message type, possibly due to connecting to Skype with older
   -- protocol.
   | ChatMessageTypeUnkown
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data ChatMessageStatus
   -- | Message is being sent
@@ -131,7 +132,7 @@ data ChatMessageStatus
 
   -- | Message has been read
   | ChatMessageStatusRead
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 data ChatMessageLeaveReason
   -- | User was not found
@@ -150,4 +151,4 @@ data ChatMessageLeaveReason
 
   -- | Participant left chat
   | ChatMessageLeaveReasonUnsubscribe
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
