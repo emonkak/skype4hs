@@ -10,7 +10,6 @@ import Web.Skype.Core
 import Web.Skype.Parser (parseNotification)
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy.Char8 as BL
 
 main :: IO ()
 main = do
@@ -22,7 +21,7 @@ main = do
     _ <- fork $ forever $ do
       notification <- liftIO $ atomically $ readTChan notificationChan
 
-      liftIO $ maybe (BL.putStrLn notification) print $ parseNotification notification
+      liftIO $ print $ parseNotification notification
 
     protocol 9999
 

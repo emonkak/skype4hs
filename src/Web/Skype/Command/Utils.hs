@@ -1,17 +1,17 @@
 module Web.Skype.Command.Utils where
 
 import Control.Concurrent.STM.TChan (readTChan)
-import Control.Monad.Error (throwError)
+import Control.Monad.Error (throwError, strMsg)
 import Control.Monad.Reader (asks)
 import Control.Monad.STM (atomically)
 import Control.Monad.Trans
 import Control.Monad.Trans.Control
-import Data.Maybe (isNothing)
+import Data.Attoparsec.ByteString.Lazy
 import Data.Monoid ((<>))
 import Data.Unique (newUnique, hashUnique)
 import System.Timeout.Lifted (timeout)
 import Web.Skype.Core
-import Web.Skype.Parser (parseNotification, parseNotificationWithCommandID)
+import Web.Skype.Parser (parseNotification, parseCommandID)
 import Web.Skype.Protocol
 
 import qualified Data.ByteString.Char8 as BC
@@ -21,7 +21,7 @@ executeCommand :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                -> (NotificationObject -> SkypeT m (Maybe a))
                -> SkypeT m a
 executeCommand command handler = handleCommand command $ \notification ->
-  case parseNotification notification of
+  case maybeResult $ parseNotification notification of
     Just response -> handler response
     Nothing       -> return Nothing
 
@@ -30,17 +30,17 @@ executeCommandWithID :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                      -> (NotificationObject -> SkypeT m (Maybe a))
                      -> SkypeT m a
 executeCommandWithID command handler = handleCommandWithID command $ \expectID notification ->
-  case parseNotificationWithCommandID notification of
-    Just (actualID, response)
-      | actualID == expectID -> do
-        result <- handler response
-        if (isNothing result)
-          then case response of
-            Error code description -> throwError $ SkypeError code command description
-            _                      -> return result
-          else return result
+  case parseCommandID notification of
+    Done t commandID
+      | commandID == expectID -> do
+        case eitherResult $ parseNotification t of
+          Left e       -> throwError $ strMsg e
+          Right object -> guardError object >> handler object
       | otherwise -> return Nothing
-    Nothing       -> return Nothing
+    _ -> return Nothing
+  where
+    guardError (Error code description) = throwError $ SkypeError code command description
+    guardError _                        = return ()
 
 handleCommand :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
               => Command

@@ -14,14 +14,14 @@ import Web.Skype.Protocol
 
 import qualified Data.Text.Encoding as T
 
-parseNotification :: Notification -> Maybe NotificationObject
-parseNotification = maybeResult . parse notification
+parseNotification :: Notification -> Result NotificationObject
+parseNotification = parse notification
 
-parseNotificationWithCommandID :: Notification -> Maybe (CommandID, NotificationObject)
-parseNotificationWithCommandID = maybeResult . parse notificationWithCommandID
+parseCommandID :: Notification -> Result CommandID
+parseCommandID = parse commandID
 
 notification :: Parser NotificationObject
-notification = choice
+notification = skipWhile isSpace *> choice
   [ alterNotification
   , chatsNotification
   , chatNotification
@@ -36,10 +36,8 @@ notification = choice
   , currentUserHandleNotification
   ]
 
-notificationWithCommandID :: Parser (CommandID, NotificationObject)
-notificationWithCommandID = (,) <$> (commandID <* spaces) <*> notification
-  where
-    commandID = word8 _numbersign *> takeWhile1 (not . isSpace)
+commandID :: Parser CommandID
+commandID = word8 _numbersign *> takeWhile1 (not . isSpace)
 
 -- | ALTER
 alterNotification :: Parser NotificationObject
@@ -79,7 +77,8 @@ connectionStatusNotification = ConnectionStatus <$> (string "CONNSTATUS" *> spac
       [ ConnectionStatusOffline    <$ string "OFFLINE"
       , ConnectionStatusConnecting <$ string "CONNECTING"
       , ConnectionStatusPausing    <$ string "PAUSING"
-      , ConnectionStatusOnline     <$ string "ONLINE" ]
+      , ConnectionStatusOnline     <$ string "ONLINE"
+      ]
 
 -- | ERROR
 errorNotification :: Parser NotificationObject
@@ -103,7 +102,7 @@ protocolNotification = Protocol <$> (string "PROTOCOL" *> spaces *> decimal)
 -- | USER
 userNotification :: Parser NotificationObject
 userNotification = User <$> (string "USER" *> spaces *> userID <* spaces)
-                          <*> userProperty
+                        <*> userProperty
 
 -- | USERSTATUS
 userStatusNotification :: Parser NotificationObject
@@ -112,4 +111,4 @@ userStatusNotification = UserStatus <$> (string "USERSTATUS" *> spaces *> userSt
 -- | CURRENTUSERHANDLE
 currentUserHandleNotification :: Parser NotificationObject
 currentUserHandleNotification = CurrentUserHandle <$>
-                                  (string "CURRENTUSERHANDLE" *> spaces *> userID)
+                                (string "CURRENTUSERHANDLE" *> spaces *> userID)
