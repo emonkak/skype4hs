@@ -33,7 +33,7 @@ chatMessageType :: Parser ChatMessageType
 chatMessageType = choice
   [ ChatMessageTypeSetTopic          <$ string "SETTOPIC"
   , ChatMessageTypeSaid              <$ string "SAID"
-  , ChatMessageTypeAddMembers        <$ string "ADDMEMBERS"
+  , ChatMessageTypeAddedMembers      <$ string "ADDEDMEMBERS"
   , ChatMessageTypeSawMembers        <$ string "SAWMEMBERS"
   , ChatMessageTypeCreatedChatWith   <$ string "CREATEDCHATWITH"
   , ChatMessageTypeLeft              <$ string "LEFT"
@@ -46,6 +46,7 @@ chatMessageType = choice
   , ChatMessageTypeSetPicture        <$ string "SETPICTURE"
   , ChatMessageTypeSetGuideLines     <$ string "SETGUIDELINES"
   , ChatMessageTypeJoinedAsApplicant <$ string "JOINEDASAPPLICANT"
+  , ChatMessageTypeEmoted            <$ string "EMOTED"
   , ChatMessageTypeUnkown            <$ string "UNKNOWN"
   ]
 

@@ -65,7 +65,7 @@ data ChatMessageType
   | ChatMessageTypeSaid
 
   -- | Invited someone to chat.
-  | ChatMessageTypeAddMembers
+  | ChatMessageTypeAddedMembers
 
   -- | Chat participant has seen other members.
   | ChatMessageTypeSawMembers
@@ -111,6 +111,8 @@ data ChatMessageType
   -- | notification message that gets sent in a public chat with
   -- JOINERS_BECOME_APPLICANTS options, when a new user joins the chat.
   | ChatMessageTypeJoinedAsApplicant
+
+  | ChatMessageTypeEmoted
 
   -- | Unknown message type, possibly due to connecting to Skype with older
   -- protocol.
