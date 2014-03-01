@@ -26,6 +26,7 @@ data NotificationObject = AlterChat AlterChatProperty
                         | OpenChat ChatID
                         | Protocol ProtocolVersion
                         | User UserID UserProperty
+                        | Users [UserID]
                         | UserStatus UserStatus
                         | CurrentUserHandle UserID
   deriving (Eq, Show)

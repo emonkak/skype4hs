@@ -31,6 +31,7 @@ notification = skipWhile isSpace *> choice
   , errorNotification
   , openNotification
   , protocolNotification
+  , usersNotification
   , userNotification
   , userStatusNotification
   , currentUserHandleNotification
@@ -98,6 +99,12 @@ openNotification = string "OPEN" *> spaces *> choice
 -- | PROTOCOL
 protocolNotification :: Parser NotificationObject
 protocolNotification = Protocol <$> (string "PROTOCOL" *> spaces *> decimal)
+
+-- | USERS
+usersNotification :: Parser NotificationObject
+usersNotification = Users <$> (string "USERS" *> spaces *> userIDs)
+  where
+    userIDs = userID `sepBy` (word8 _comma *> spaces)
 
 -- | USER
 userNotification :: Parser NotificationObject

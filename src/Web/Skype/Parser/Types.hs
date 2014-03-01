@@ -24,6 +24,7 @@ userID = takeWhile1 symbol
       , (==) _hyphen
       , (==) _period
       , (==) _underscore
+      , (==) _colon
       ]
 
 userFullName :: Parser UserDisplayName
@@ -38,13 +39,13 @@ userBirthday = Just <$> (fromGregorian <$> digit 4 <*> digit 2 <*> digit 2)
   where
     digit n = read . map (chr . fromIntegral) <$> count n (satisfy isDigit)
 
-userLanguage :: Parser (UserLanguagePrefix, UserLanguage)
-userLanguage = (,) <$> (tokens <* spaces) <*> tokens
+userLanguage :: Parser (Maybe (UserLanguageISOCode, UserLanguage))
+userLanguage = Just <$> ((,) <$> (tokens <* spaces) <*> tokens) <|> pure Nothing
   where
     tokens = T.decodeUtf8 <$> takeWhile1 isAlpha
 
-userCountry :: Parser (UserCountryPrefix, UserCountry)
-userCountry = (,) <$> (tokens <* spaces) <*> tokens
+userCountry :: Parser (Maybe (UserCountryISOCode, UserCountry))
+userCountry = Just <$> ((,) <$> (tokens <* spaces) <*> tokens) <|> pure Nothing
   where
     tokens = T.decodeUtf8 <$> takeWhile1 isAlpha
 

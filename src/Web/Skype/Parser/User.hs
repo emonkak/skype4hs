@@ -1,7 +1,7 @@
 module Web.Skype.Parser.User where
 
 import Control.Applicative
-import Data.Attoparsec.ByteString.Char8 (decimal)
+import Data.Attoparsec.ByteString.Char8 (anyChar, decimal)
 import Data.Attoparsec.ByteString.Lazy
 import Data.Word8
 import Web.Skype.Parser.Types
@@ -17,9 +17,9 @@ userProperty = choice
   , UserCountry                <$> (property "COUNTRY" *> userCountry)
   , UserProvince               <$> (property "PROVINCE" *> userProvince)
   , UserCity                   <$> (property "CITY" *> userCity)
-  , UserPhoneHome              <$> (property "PHONE_HOME" *> userPhone)
-  , UserPhoneOffice            <$> (property "PHONE_OFFICE" *> userPhone)
-  , UserPhoneMobile            <$> (property "PHONE_MOBILE" *> userPhone)
+  , UserHomePhone              <$> (property "PHONE_HOME" *> userPhone)
+  , UserOfficePhone            <$> (property "PHONE_OFFICE" *> userPhone)
+  , UserMobilePhone            <$> (property "PHONE_MOBILE" *> userPhone)
   , UserHomepage               <$> (property "HOMEPAGE" *> userHomepage)
   , UserAbout                  <$> (property "ABOUT" *> userAbout)
   , UserHasCallEquipment       <$> (property "HASCALLEQUIPMENT" *> boolean)
@@ -30,7 +30,7 @@ userProperty = choice
   , UserIsBlocked              <$> (property "ISBLOCKED" *> boolean)
   , UserOnlineStatus           <$> (property "ONLINESTATUS" *> userOnlineStatus)
   , UserLastOnlineTimestamp    <$> (property "LASTONLINETIMESTAMP" *> timestamp)
-  , UserCanLeaveVoiceMail      <$> (property "CAN_LEAVE_VM" *> boolean)
+  , UserCanLeaveVoicemail      <$> (property "CAN_LEAVE_VM" *> boolean)
   , UserSpeedDial              <$> (property "SPEEDDIAL" *> userSpeedDial)
   , UserReceiveAuthRequest     <$> (property "RECEIVEDAUTHREQUEST" *> userAuthRequestMessage)
   , UserMoodText               <$> (property "MOOD_TEXT" *> userMoodText)
@@ -52,15 +52,15 @@ userSex = choice
 
 userStatus :: Parser UserStatus
 userStatus = choice
-  [ UserStatusUnknown   <$ string "UNKNOWN"
-  , UserStatusOnline    <$ string "ONLINE"
-  , UserStatusOffline   <$ string "OFFLINE"
-  , UserStatusSkypeMe   <$ string "SKYPEME"
-  , UserStatusAway      <$ string "AWAY"
-  , UserStatusNA        <$ string "NA"
-  , UserStatusDND       <$ string "DND"
-  , UserStatusInvisible <$ string "INVISIBLE"
-  , UserStatusLoggedOut <$ string "LOGGEDOUT"
+  [ UserStatusUnknown      <$ string "UNKNOWN"
+  , UserStatusOnline       <$ string "ONLINE"
+  , UserStatusOffline      <$ string "OFFLINE"
+  , UserStatusSkypeMe      <$ string "SKYPEME"
+  , UserStatusAway         <$ string "AWAY"
+  , UserStatusNotAvailable <$ string "NA"
+  , UserStatusDoNotDisturb <$ string "DND"
+  , UserStatusInvisible    <$ string "INVISIBLE"
+  , UserStatusLoggedOut    <$ string "LOGGEDOUT"
   ]
 
 userBuddyStatus :: Parser UserBuddyStatus
@@ -80,3 +80,6 @@ userOnlineStatus = choice
   , UserOnlineStatusNotAvailable <$ string "NA"
   , UserOnlineStatusDoNotDisturb <$ string "DND"
   ]
+
+userAvater :: Parser (Int, FilePath)
+userAvater = (,) <$> decimal <*> many anyChar
