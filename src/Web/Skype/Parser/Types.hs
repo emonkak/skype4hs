@@ -1,6 +1,7 @@
 module Web.Skype.Parser.Types where
 
 import Control.Applicative
+import Control.Arrow
 import Data.Attoparsec.ByteString.Char8 (decimal)
 import Data.Attoparsec.ByteString.Lazy
 import Data.Char (chr)
@@ -15,17 +16,7 @@ import qualified Data.Text.Encoding as T
 -- * User
 
 userID :: Parser UserID
-userID = takeWhile1 symbol
-  where
-    symbol c = any ($ c)
-      [ isAlpha
-      , isDigit
-      , (==) _numbersign
-      , (==) _hyphen
-      , (==) _period
-      , (==) _underscore
-      , (==) _colon
-      ]
+userID = takeWhile1 $ uncurry (&&) . ((not . isSpace) &&& (/=) _comma)
 
 userFullName :: Parser UserDisplayName
 userFullName = takeText
@@ -82,19 +73,7 @@ userTimezoneOffset = decimal
 -- * Chat
 
 chatID :: Parser ChatID
-chatID = takeWhile1 $ symbol
-  where
-    symbol c = any ($ c)
-      [ isAlpha
-      , isDigit
-      , (==) _numbersign
-      , (==) _dollar
-      , (==) _hyphen
-      , (==) _period
-      , (==) _slash
-      , (==) _underscore
-      , (==) _semicolon
-      ]
+chatID = takeWhile1 $ uncurry (&&) . ((not . isSpace) &&& (/=) _comma)
 
 chatTopic :: Parser ChatTopic
 chatTopic = takeText
