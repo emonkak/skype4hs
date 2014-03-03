@@ -1,7 +1,7 @@
 module Web.Skype.Command.Utils where
 
 import Control.Concurrent.STM.TChan (readTChan)
-import Control.Monad.Error (throwError, strMsg)
+import Control.Monad.Error (throwError)
 import Control.Monad.Reader (asks)
 import Control.Monad.STM (atomically)
 import Control.Monad.Trans
@@ -15,6 +15,7 @@ import Web.Skype.Parser (parseNotification, parseCommandID)
 import Web.Skype.Protocol
 
 import qualified Data.ByteString.Char8 as BC
+import qualified Data.Text as T
 
 executeCommand :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                => Command
@@ -34,7 +35,7 @@ executeCommandWithID command handler = handleCommandWithID command $ \expectID n
     Done t commandID
       | commandID == expectID -> do
         case eitherResult $ parseNotification t of
-          Left e       -> throwError $ strMsg e
+          Left e       -> throwError $ SkypeError 0 command (T.pack e)
           Right object -> guardError object >> handler object
       | otherwise -> return Nothing
     _ -> return Nothing
