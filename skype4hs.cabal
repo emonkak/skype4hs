@@ -27,7 +27,7 @@ Flag carbon
 library
   if os(linux) || os(freebsd) || flag(x11)
     exposed-modules:   Web.Skype.API.X11
-    build-depends:     X11 >=1.6.1
+    build-depends:     X11 >=1.5
 
   if os(darwin) || flag(carbon)
     frameworks:        Carbon
