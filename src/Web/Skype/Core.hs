@@ -8,13 +8,14 @@ module Web.Skype.Core (
   SkypeError(..),
   SkypeT,
   defaultConfig,
-  dupNotificationChan,
   runSkype,
-  runSkypeWith
+  runSkypeWith,
+  dupNotificationChan,
+  onNotification
 ) where
 
 import Control.Applicative (Applicative)
-import Control.Concurrent.STM.TChan (TChan, dupTChan)
+import Control.Concurrent.STM.TChan (TChan, dupTChan, readTChan)
 import Control.Monad (liftM)
 import Control.Monad.Error (MonadError, Error(..), ErrorT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), runReaderT)
@@ -114,3 +115,10 @@ runSkypeWith connection config skype =
 
 dupNotificationChan :: (MonadIO m, MonadSkype m) => m (TChan Notification)
 dupNotificationChan = getNotificationChan >>= liftIO . atomically . dupTChan
+
+onNotification :: (MonadIO m, MonadSkype m) => (Notification -> m a) -> m ()
+onNotification f = dupNotificationChan >>= loop
+  where
+    loop chan = do
+      _ <- liftIO (atomically (readTChan chan)) >>= f
+      loop chan

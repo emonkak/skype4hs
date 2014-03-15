@@ -1,8 +1,6 @@
 import Control.Applicative
 import Control.Concurrent.Lifted
-import Control.Concurrent.STM.TChan
 import Control.Monad
-import Control.Monad.STM
 import Control.Monad.Trans
 import Web.Skype.API
 import Web.Skype.Command.Misc
@@ -16,11 +14,7 @@ main = do
   connection <- connect "skype-repl"
 
   _ <- runSkype connection $ do
-    notificationChan <- dupNotificationChan
-
-    _ <- fork $ forever $ do
-      notification <- liftIO $ atomically $ readTChan notificationChan
-
+    _ <- fork $ onNotification $ \notification ->
       liftIO $ print $ parseNotification notification
 
     protocol 9999
