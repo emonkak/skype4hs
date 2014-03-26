@@ -22,9 +22,9 @@ executeCommand :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                -> (NotificationObject -> SkypeT m (Maybe a))
                -> SkypeT m a
 executeCommand command handler = handleCommand command $ \notification ->
-  case maybeResult $ parseNotification notification of
-    Just response -> handler response
-    Nothing       -> return Nothing
+  case parseNotification notification of
+    Right response -> handler response
+    Left _         -> return Nothing
 
 executeCommandWithID :: (MonadBaseControl IO m, MonadIO m, MonadSkype m)
                      => Command
@@ -34,7 +34,7 @@ executeCommandWithID command handler = handleCommandWithID command $ \expectID n
   case parseCommandID notification of
     Done t commandID
       | commandID == expectID -> do
-        case eitherResult $ parseNotification t of
+        case parseNotification t of
           Left e       -> throwError $ SkypeError 0 command (T.pack e)
           Right object -> guardError object >> handler object
       | otherwise -> return Nothing

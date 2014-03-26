@@ -14,8 +14,8 @@ import Web.Skype.Protocol
 
 import qualified Data.Text.Encoding as T
 
-parseNotification :: Notification -> Result NotificationObject
-parseNotification = parse notification
+parseNotification :: Notification -> Either String NotificationObject
+parseNotification = eitherResult . parse notification
 
 parseCommandID :: Notification -> Result CommandID
 parseCommandID = parse commandID
