@@ -95,7 +95,7 @@ chatBlob = takeByteString
 
 -- * Chat member
 
-chatMemberID :: Parser ChatMessageID
+chatMemberID :: Parser ChatMemberID
 chatMemberID = decimal
 
 -- * Chat message
