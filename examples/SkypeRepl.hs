@@ -2,10 +2,10 @@ import Control.Applicative
 import Control.Concurrent.Lifted
 import Control.Monad
 import Control.Monad.Trans
-import Web.Skype.API
-import Web.Skype.Command.Misc
-import Web.Skype.Core
-import Web.Skype.Parser (parseNotification)
+import Network.Skype.API
+import Network.Skype.Command.Misc
+import Network.Skype.Core
+import Network.Skype.Parser (parseNotification)
 
 import qualified Data.ByteString as BS
 
