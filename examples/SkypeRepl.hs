@@ -1,4 +1,5 @@
-import Control.Applicative
+{-# LANGUAGE OverloadedStrings #-}
+
 import Control.Concurrent.Lifted
 import Control.Monad
 import Control.Monad.Trans
