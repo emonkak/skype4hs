@@ -16,7 +16,9 @@ main = do
 
   _ <- runSkype connection $ do
     _ <- fork $ onNotification $ \notification ->
-      liftIO $ print $ parseNotification notification
+      liftIO $ either (const $ print notification)
+                      print
+                      (parseNotification notification)
 
     protocol 9999
 
