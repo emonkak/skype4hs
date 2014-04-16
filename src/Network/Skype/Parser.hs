@@ -21,21 +21,23 @@ parseCommandID :: Notification -> Result CommandID
 parseCommandID = parse commandID
 
 notification :: Parser NotificationObject
-notification = skipWhile isSpace *> choice
-  [ alterNotification
-  , chatsNotification
-  , chatNotification
-  , chatMemberNotification
-  , chatMessageNotification
-  , connectionStatusNotification
-  , errorNotification
-  , openNotification
-  , protocolNotification
-  , usersNotification
-  , userNotification
-  , userStatusNotification
-  , currentUserHandleNotification
-  ]
+notification = skipWhile isSpace *> body <* endOfInput
+  where
+    body = choice
+      [ alterNotification
+      , chatsNotification
+      , chatNotification
+      , chatMemberNotification
+      , chatMessageNotification
+      , connectionStatusNotification
+      , errorNotification
+      , openNotification
+      , protocolNotification
+      , usersNotification
+      , userNotification
+      , userStatusNotification
+      , currentUserHandleNotification
+      ]
 
 commandID :: Parser CommandID
 commandID = word8 _numbersign *> takeWhile1 (not . isSpace)
