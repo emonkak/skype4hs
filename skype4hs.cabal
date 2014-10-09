@@ -12,11 +12,11 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 Flag x11
-  Description: Enable x11 communication layer support
+  Description: Force enabled x11 communication layer support
   Default:     False
 
 Flag carbon
-  Description: Enable carbon communication layer support
+  Description: Force enabled carbon communication layer support
   Default:     False
 
 library
