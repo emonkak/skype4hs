@@ -216,7 +216,9 @@ runEventLoop api action =
   loop mempty (X.Display display_ptr) event_ptr
   where
     loop builder display event_ptr = do
+      X.lockDisplay display
       X.nextEvent display event_ptr  -- will blocking
+      X.unlockDisplay display
 
       eventType <- #{peek XClientMessageEvent, type} event_ptr
 
