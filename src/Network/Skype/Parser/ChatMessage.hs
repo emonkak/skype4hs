@@ -52,10 +52,10 @@ chatMessageType = choice
 
 chatMessageStatus :: Parser ChatMessageStatus
 chatMessageStatus = choice
-  [ ChatMessageStatusSending <$ string "SENDING"
-  , ChatMessageStatusSent    <$ string "SENT"
-  , ChatMessageStatusReceive <$ string "RECEIVE"
-  , ChatMessageStatusRead    <$ string "READ"
+  [ ChatMessageStatusSending  <$ string "SENDING"
+  , ChatMessageStatusSent     <$ string "SENT"
+  , ChatMessageStatusReceived <$ string "RECEIVED"
+  , ChatMessageStatusRead     <$ string "READ"
   ]
 
 chatMessageLeaveReason :: Parser ChatMessageLeaveReason

@@ -128,7 +128,7 @@ data ChatMessageStatus
   | ChatMessageStatusSent
 
   -- | Message has been received
-  | ChatMessageStatusReceive
+  | ChatMessageStatusReceived
 
   -- | Message has been read
   | ChatMessageStatusRead

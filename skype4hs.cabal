@@ -1,5 +1,5 @@
 name:                skype4hs
-version:             0.0.0.0
+version:             0.1.0.0
 synopsis:            Skype Desktop API binding for Haskell
 description:         Skype Desktop API binding for Haskell
 homepage:            https://github.com/emonkak/haskell-skype
